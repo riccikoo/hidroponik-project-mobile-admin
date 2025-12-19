@@ -2,21 +2,39 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/sensor_model.dart';
 import '../models/message_model.dart';
-import 'shared.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://localhost:5000/api';
+  static const String baseUrl = 'http://localhost:5000';
 
-  // Hapus method register karena tidak akan digunakan
-  // static Future<Map<String, dynamic>> register(...) { ... }
+  // Helper untuk headers
+  static Map<String, String> _getHeaders(String token) {
+    return {
+      'Authorization': 'Bearer $token',
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    };
+  }
 
+  // Helper untuk error handling
+  static Map<String, dynamic> _handleError(dynamic e) {
+    print('❌ API Error: $e');
+    return {
+      'status': false,
+      'message': 'Koneksi gagal. Periksa koneksi internet Anda.',
+      'error': e.toString(),
+    };
+  }
+
+  // ========== AUTHENTICATION ==========
   static Future<Map<String, dynamic>> login(
     String email,
     String password,
   ) async {
     try {
+      print('🔐 Login attempt for: $email');
+
       final response = await http.post(
-        Uri.parse('$baseUrl/login'),
+        Uri.parse('$baseUrl/api/login'),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -24,163 +42,147 @@ class ApiService {
         body: jsonEncode({'email': email, 'password': password}),
       );
 
-      print('Raw Response Body: ${response.body}');
-      print('Status Code: ${response.statusCode}');
+      print('📥 Login Response Status: ${response.statusCode}');
+
+      // Handle non-200 responses
+      if (response.statusCode != 200) {
+        return {
+          'status': false,
+          'message': 'Server error (${response.statusCode})',
+        };
+      }
 
       final responseData = jsonDecode(response.body);
 
-      if (response.statusCode == 200) {
-        if (responseData['status'] == true) {
-          final userData = responseData['user'] as Map<String, dynamic>;
+      if (responseData['status'] == true) {
+        final userData = responseData['user'] as Map<String, dynamic>;
+        final role = userData['role']?.toString().toLowerCase() ?? '';
 
-          print('Token from API: ${responseData['token']}');
-          print('User from API: $userData');
-
-          final role = userData['role']?.toString().toLowerCase() ?? '';
-
-          if (role != 'admin') {
-            return {
-              'status': false,
-              'message': 'Akses ditolak. Hanya admin yang dapat login.',
-            };
-          }
-
-          final token = responseData['token']?.toString();
-
-          if (token == null || token.isEmpty) {
-            return {
-              'status': false,
-              'message': 'Token tidak ditemukan dalam response',
-            };
-          }
-
-          // Return Map bukan User object
-          return {
-            'status': true,
-            'token': token,
-            'user': userData, // Kirim Map, bukan User object
-          };
-        } else {
+        // Cek role admin
+        if (role != 'admin') {
           return {
             'status': false,
-            'message': responseData['message'] ?? 'Login gagal',
+            'message': 'Akses ditolak. Hanya admin yang dapat login.',
           };
         }
+
+        final token = responseData['token']?.toString();
+
+        if (token == null || token.isEmpty) {
+          return {
+            'status': false,
+            'message': 'Token tidak ditemukan dalam response',
+          };
+        }
+
+        print('✅ Login successful for admin: ${userData['email']}');
+
+        return {'status': true, 'token': token, 'user': userData};
       } else {
         return {
           'status': false,
-          'message': responseData['message'] ?? 'Server error',
+          'message': responseData['message'] ?? 'Login gagal',
         };
       }
     } catch (e) {
-      print('Login Error: $e');
-      return {'status': false, 'message': 'Koneksi gagal: $e'};
+      return _handleError(e);
     }
   }
 
-  // services/api.dart - Tambahkan method debug
-  static Future<Map<String, dynamic>> testAdminAccess() async {
+  static Future<Map<String, dynamic>> logout(String token) async {
     try {
-      final token = await SharedService.getToken();
-
-      if (token == null || token.isEmpty) {
-        throw Exception('No token available');
-      }
-
-      print('🧪 Testing admin access...');
-      print('🔗 URL: $baseUrl/admin/test');
-      print('🔑 Token: ${token.substring(0, 20)}...');
-
-      final response = await http.get(
-        Uri.parse('$baseUrl/admin/test'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Accept': 'application/json',
-        },
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/logout'),
+        headers: _getHeaders(token),
       );
 
-      print('📥 Test Response Status: ${response.statusCode}');
-      print('📥 Test Response Body: ${response.body}');
+      return {
+        'status': response.statusCode == 200,
+        'message': response.statusCode == 200
+            ? 'Logout berhasil'
+            : 'Logout gagal',
+      };
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  // ========== ADMIN DASHBOARD ==========
+  static Future<Map<String, dynamic>> getDashboardStats(String token) async {
+    try {
+      print('📊 Fetching dashboard stats...');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/admin/dashboard/stats'),
+        headers: _getHeaders(token),
+      );
+
+      print('📊 Dashboard Response: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        return {
+          'status': false,
+          'message': 'Session expired. Please login again.',
+          'code': 401,
+        };
+      } else if (response.statusCode == 403) {
+        return {
+          'status': false,
+          'message': 'Access denied. Admin only.',
+          'code': 403,
+        };
+      } else {
+        return {
+          'status': false,
+          'message': 'Failed to load dashboard (${response.statusCode})',
+          'code': response.statusCode,
+        };
+      }
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  static Future<Map<String, dynamic>> getQuickStats(String token) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/admin/dashboard/quick-stats'),
+        headers: _getHeaders(token),
+      );
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
-        print('❌ Test failed: ${response.statusCode}');
-        return {
-          'status': false,
-          'message': 'Test failed with status ${response.statusCode}',
-          'body': response.body,
-        };
+        return {'status': false, 'message': 'Failed to load quick stats'};
       }
     } catch (e) {
-      print('❌ Test admin access error: $e');
-      return {'status': false, 'message': 'Test error: $e'};
+      return _handleError(e);
     }
   }
 
-  // Method untuk logout (opsional)
-  static Future<Map<String, dynamic>> logout(String token) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/logout'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
-
-      final responseData = jsonDecode(response.body);
-      return {
-        'status': response.statusCode == 200,
-        'message': responseData['message'] ?? 'Logout berhasil',
-      };
-    } catch (e) {
-      return {'status': false, 'message': 'Koneksi gagal: $e'};
-    }
-  }
-
-  // Method untuk get admin profile (opsional)
-  static Future<Map<String, dynamic>> getAdminProfile(String token) async {
+  // ========== SENSOR DATA ==========
+  static Future<List<SensorData>> fetchSensorData(String token) async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/admin/profile'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Accept': 'application/json',
-        },
+        Uri.parse('$baseUrl/api/get_sensor_data'),
+        headers: _getHeaders(token),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return {'status': true, 'profile': data['profile']};
+        final List sensorList = data['data'] ?? [];
+
+        return sensorList
+            .map((e) => SensorData.fromJson(Map<String, dynamic>.from(e)))
+            .toList();
       } else {
-        return {'status': false, 'message': 'Gagal mengambil profil admin'};
+        throw Exception('Failed to load sensor data: ${response.statusCode}');
       }
     } catch (e) {
-      return {'status': false, 'message': 'Koneksi gagal: $e'};
-    }
-  }
-
-  // Method lainnya tetap sama...
-  static Future<List<SensorData>> fetchSensorData(String token) async {
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/get_sensor_data'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Accept': 'application/json',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final List data = jsonDecode(response.body)['data'];
-        return data.map((e) => SensorData.fromJson(e)).toList();
-      } else {
-        throw Exception('Gagal load sensor: ${response.body}');
-      }
-    } catch (e) {
-      throw Exception('Error: $e');
+      print('❌ Sensor data error: $e');
+      rethrow;
     }
   }
 
@@ -191,31 +193,181 @@ class ApiService {
   ) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/control_actuator'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
+        Uri.parse('$baseUrl/api/control_actuator'),
+        headers: _getHeaders(token),
         body: jsonEncode({"name": name, "state": state ? "ON" : "OFF"}),
       );
 
-      final responseData = jsonDecode(response.body);
-      return responseData;
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        return {
+          "status": false,
+          "message": "Failed to control actuator (${response.statusCode})",
+        };
+      }
     } catch (e) {
-      return {"status": false, "message": "Gagal mengirim perintah: $e"};
+      return _handleError(e);
     }
   }
 
+  // ========== MESSAGES ==========
   static Future<List<UserMessage>> getUserMessages(String token) async {
-    final res = await http.get(
-      Uri.parse("$baseUrl/user/messages"),
-      headers: {"Authorization": "Bearer $token"},
-    );
+    try {
+      final response = await http.get(
+        Uri.parse("$baseUrl/api/user/messages"),
+        headers: {"Authorization": "Bearer $token"},
+      );
 
-    final data = jsonDecode(res.body);
-    List messages = data["messages"];
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final List messages = data["messages"] ?? [];
 
-    return messages.map((m) => UserMessage.fromJson(m)).toList();
+        return messages
+            .map((m) => UserMessage.fromJson(Map<String, dynamic>.from(m)))
+            .toList();
+      } else {
+        print('❌ Failed to get messages: ${response.statusCode}');
+        return [];
+      }
+    } catch (e) {
+      print('❌ Messages error: $e');
+      return [];
+    }
+  }
+
+  // NEW: Get message count (for badge)
+  static Future<Map<String, dynamic>> getMessageCount(String token) async {
+    try {
+      final response = await http.get(
+        Uri.parse("$baseUrl/api/user/messages/count"),
+        headers: {"Authorization": "Bearer $token"},
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        return {'status': false, 'total_count': 0, 'unread_count': 0};
+      }
+    } catch (e) {
+      print('❌ Message count error: $e');
+      return {'status': false, 'total_count': 0, 'unread_count': 0};
+    }
+  }
+
+  // NEW: Mark message as read
+  static Future<bool> markMessageAsRead(String token, int messageId) async {
+    try {
+      final response = await http.post(
+        Uri.parse("$baseUrl/api/messages/$messageId/read"),
+        headers: {"Authorization": "Bearer $token"},
+      );
+
+      return response.statusCode == 200;
+    } catch (e) {
+      print('❌ Mark as read error: $e');
+      return false;
+    }
+  }
+
+  // NEW: Delete message
+  static Future<bool> deleteMessage(String token, int messageId) async {
+    try {
+      final response = await http.delete(
+        Uri.parse("$baseUrl/api/messages/$messageId"),
+        headers: {"Authorization": "Bearer $token"},
+      );
+
+      return response.statusCode == 200;
+    } catch (e) {
+      print('❌ Delete message error: $e');
+      return false;
+    }
+  }
+
+  // ========== DEBUG/TEST ==========
+  static Future<Map<String, dynamic>> testAdminAccess(String token) async {
+    try {
+      print('🧪 Testing admin access...');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/admin/test'),
+        headers: {"Authorization": "Bearer $token"},
+      );
+
+      print('🧪 Test Response: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        return {
+          'status': false,
+          'message': 'Test failed (${response.statusCode})',
+        };
+      }
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  static Future<Map<String, dynamic>> getAdminProfile(String token) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/admin/profile'),
+        headers: _getHeaders(token),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {'status': true, 'profile': data['profile']};
+      } else {
+        return {'status': false, 'message': 'Failed to load profile'};
+      }
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  // NEW: Sensor history for charts
+  static Future<Map<String, dynamic>> getSensorHistory(
+    String token,
+    String sensorName, {
+    int hours = 24,
+    int limit = 100,
+  }) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/admin/dashboard/sensor-history').replace(
+          queryParameters: {
+            'sensor': sensorName,
+            'hours': hours.toString(),
+            'limit': limit.toString(),
+          },
+        ),
+        headers: _getHeaders(token),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        return {'status': false, 'message': 'Failed to load sensor history'};
+      }
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  // NEW: Test database connection
+  static Future<Map<String, dynamic>> testDatabase(String token) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/admin/debug/database'),
+        headers: _getHeaders(token),
+      );
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      return _handleError(e);
+    }
   }
 }

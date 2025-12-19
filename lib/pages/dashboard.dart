@@ -10,6 +10,7 @@ import 'sensor.dart';
 import 'analytics.dart';
 import 'setting.dart';
 import 'log.dart';
+import 'messages.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -152,7 +153,11 @@ class _DashboardPageState extends State<DashboardPage> {
             // 1. User Statistics
             activeUsers = stats['users']['active'] ?? 1;
 
-            // 2. Sensor Statistics
+            // 2. Update message count dari dashboard stats
+            totalMessages =
+                (stats['messages']?['total_today'] as num?)?.toInt() ?? 0;
+
+            // 3. Sensor Statistics
             final sensorStats = stats['sensors'];
             final sensorReadings = sensorStats['latest_readings'] ?? {};
 
@@ -168,12 +173,15 @@ class _DashboardPageState extends State<DashboardPage> {
             waterLevel = (sensorReadings['ultrasonic']?['value'] ?? 0.0)
                 .toDouble();
 
-            // 3. System Status
+            // 4. System Status
             systemOnline = stats['system_status'] == 'online';
 
-            // 4. Update allSensors untuk backward compatibility
+            // 5. Update allSensors untuk backward compatibility
             _updateAllSensorsFromReadings(sensorReadings);
           });
+
+          // Juga load messages untuk badge (unread count)
+          await _loadMessageCount();
 
           return;
         }
@@ -204,6 +212,33 @@ class _DashboardPageState extends State<DashboardPage> {
         print('❌ Error loading dashboard stats: $e');
       }
       _useFallbackData();
+    }
+  }
+
+  // Method baru untuk load message count
+  Future<void> _loadMessageCount() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/user/messages/count'),
+        headers: {'Authorization': 'Bearer $_token'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          // Prioritaskan unread_count jika tersedia, jika tidak gunakan total
+          totalMessages = data['unread_count'] ?? data['total'] ?? 0;
+
+          if (kDebugMode) {
+            print('📊 Message count loaded: $totalMessages');
+          }
+        });
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error loading message count: $e');
+      }
+      // Tetap gunakan nilai dari dashboard stats jika error
     }
   }
 
@@ -396,7 +431,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
                 child: Stack(
                   children: [
-                    // Decorative circles - FIXED: withOpacity() bukan withValues()
+                    // Decorative circles
                     Positioned(
                       top: -30,
                       right: -30,
@@ -484,6 +519,27 @@ class _DashboardPageState extends State<DashboardPage> {
                         color: Colors.white,
                         strokeWidth: 2,
                       ),
+                    ),
+                  ),
+                ),
+              // Badge untuk messages
+              if (totalMessages > 0)
+                Padding(
+                  padding: const EdgeInsets.only(right: 16, top: 8),
+                  child: Badge(
+                    backgroundColor: Colors.red,
+                    textColor: Colors.white,
+                    label: Text(
+                      totalMessages > 99 ? '99+' : totalMessages.toString(),
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.message_rounded,
+                      color: Colors.white.withOpacity(0.9),
+                      size: 22,
                     ),
                   ),
                 ),
@@ -594,8 +650,8 @@ class _DashboardPageState extends State<DashboardPage> {
                       icon: Icons.message_rounded,
                       color: accentPurple,
                       subtitle: totalMessages > 0
-                          ? '$totalMessages total'
-                          : 'No messages',
+                          ? '$totalMessages new'
+                          : 'No new messages',
                     ),
                     _statCard(
                       title: 'System Status',
@@ -777,6 +833,20 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
 
                 _actionCard(
+                  icon: Icons.message_outlined,
+                  title: 'User Messages',
+                  subtitle: 'View and manage user messages',
+                  color: Colors.teal,
+                  badgeCount: totalMessages,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const MessagesPage()),
+                    );
+                  },
+                ),
+
+                _actionCard(
                   icon: Icons.settings_outlined,
                   title: 'System Settings',
                   subtitle: 'Configure system parameters',
@@ -854,7 +924,8 @@ class _DashboardPageState extends State<DashboardPage> {
                                   ? 'Loading data from database...'
                                   : 'Last update: ${_getLastUpdateTime()}\n'
                                         '${allSensors.length} sensor readings\n'
-                                        '${_getTotalSensors()} active sensors',
+                                        '${_getTotalSensors()} active sensors\n'
+                                        '$totalMessages unread messages',
                               style: TextStyle(
                                 fontSize: 13,
                                 color: Colors.grey.shade600,
@@ -1101,6 +1172,7 @@ class _DashboardPageState extends State<DashboardPage> {
     required String subtitle,
     required Color color,
     required VoidCallback onTap,
+    int? badgeCount,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -1127,7 +1199,40 @@ class _DashboardPageState extends State<DashboardPage> {
                     color: color.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(icon, color: color, size: 22),
+                  child: Stack(
+                    children: [
+                      Icon(icon, color: color, size: 22),
+                      if (badgeCount != null && badgeCount > 0)
+                        Positioned(
+                          top: -2,
+                          right: -2,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: Colors.white,
+                                width: 1.5,
+                              ),
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 20,
+                              minHeight: 20,
+                            ),
+                            child: Text(
+                              badgeCount > 99 ? '99+' : badgeCount.toString(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 8,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
