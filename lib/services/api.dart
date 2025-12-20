@@ -120,30 +120,40 @@ class ApiService {
       print('📊 Dashboard Response: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else if (response.statusCode == 401) {
+        final decoded = jsonDecode(response.body);
+
+        print('📊 decoded type: ${decoded.runtimeType}');
+        print('📊 decoded[data] type: ${decoded['data']?.runtimeType}');
+
+        return Map<String, dynamic>.from(decoded['data']);
+      }
+
+      if (response.statusCode == 401) {
         return {
           'status': false,
           'message': 'Session expired. Please login again.',
           'code': 401,
         };
-      } else if (response.statusCode == 403) {
+      }
+
+      if (response.statusCode == 403) {
         return {
           'status': false,
           'message': 'Access denied. Admin only.',
           'code': 403,
         };
-      } else {
-        return {
-          'status': false,
-          'message': 'Failed to load dashboard (${response.statusCode})',
-          'code': response.statusCode,
-        };
       }
+
+      return {
+        'status': false,
+        'message': 'Failed to load dashboard (${response.statusCode})',
+        'code': response.statusCode,
+      };
     } catch (e) {
       return _handleError(e);
     }
   }
+
 
   static Future<Map<String, dynamic>> getQuickStats(String token) async {
     try {
@@ -374,7 +384,9 @@ class ApiService {
   }
 
   static Future<List<dynamic>> getMessageReplies(
-      String token, int messageId) async {
+    String token,
+    int messageId,
+  ) async {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/api/admin/messages/$messageId/replies'),
@@ -398,7 +410,10 @@ class ApiService {
   }
 
   static Future<bool> sendReply(
-      String token, int messageId, String content) async {
+    String token,
+    int messageId,
+    String content,
+  ) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/api/admin/messages/$messageId/reply'),
@@ -406,9 +421,7 @@ class ApiService {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-        body: jsonEncode({
-          'content': content,
-        }),
+        body: jsonEncode({'content': content}),
       );
 
       if (response.statusCode == 201) {
@@ -441,6 +454,161 @@ class ApiService {
     } catch (e) {
       print('Error getting threads: $e');
       return [];
+    }
+  }
+
+  static Future<Map<String, dynamic>> getUsers({
+    required String token,
+    int page = 1,
+    int perPage = 10,
+    String search = '',
+  }) async {
+    try {
+      print('👥 Fetching users - Page: $page, Search: "$search"');
+
+      final url = Uri.parse('$baseUrl/api/admin/users').replace(
+        queryParameters: {
+          'page': page.toString(),
+          'per_page': perPage.toString(),
+          if (search.isNotEmpty) 'search': search,
+        },
+      );
+
+      final response = await http.get(url, headers: _getHeaders(token));
+      print('👥 Users Response: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+
+        print('👥 decoded type: ${decoded.runtimeType}');
+        print('👥 data type: ${decoded['data']?.runtimeType}');
+        print('👥 users type: ${decoded['data']?['users']?.runtimeType}');
+
+        return Map<String, dynamic>.from(decoded);
+      }
+
+      if (response.statusCode == 401) {
+        return {'status': false, 'message': 'Session expired', 'code': 401};
+      }
+
+      if (response.statusCode == 403) {
+        return {'status': false, 'message': 'Access denied', 'code': 403};
+      }
+
+      return {
+        'status': false,
+        'message': 'Failed to load users (${response.statusCode})',
+        'code': response.statusCode,
+      };
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  // Tambah di ApiService.dart setelah getUserDetails()
+  static Future<Map<String, dynamic>> createUser({
+    required String token,
+    required Map<String, dynamic> userData,
+  }) async {
+    try {
+      print('👤 Creating new user with data: $userData');
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/admin/users'),
+        headers: _getHeaders(token),
+        body: jsonEncode(userData),
+      );
+
+      print('👤 Create User Response: ${response.statusCode}');
+      print('👤 Response Body: ${response.body}');
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        // Safe type casting
+        final dynamic parsedJson = jsonDecode(response.body);
+        if (parsedJson is Map) {
+          return Map<String, dynamic>.from(parsedJson);
+        }
+        return {
+          'status': false,
+          'message': 'Invalid response format',
+        };
+      } else if (response.statusCode == 400) {
+        return {
+          'status': false,
+          'message': 'Bad request. Please check your data.',
+        };
+      } else if (response.statusCode == 409) {
+        return {
+          'status': false,
+          'message': 'Email already exists',
+        };
+      } else if (response.statusCode == 403) {
+        return {
+          'status': false,
+          'message': 'Access denied. Admin only.',
+        };
+      } else {
+        return {
+          'status': false,
+          'message': 'Failed to create user (${response.statusCode})',
+          'body': response.body,
+        };
+      }
+    } catch (e) {
+      print('❌ Error creating user: $e');
+      return {
+        'status': false,
+        'message': 'Network error: ${e.toString()}',
+        'error': e.toString(),
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> updateUserStatus({
+    required String token,
+    required int userId,
+    required bool isActive,
+  }) async {
+    final response = await http.put(
+      Uri.parse('$baseUrl/api/admin/users/$userId'),
+      headers: _getHeaders(token),
+      body: jsonEncode({'is_active': isActive}),
+    );
+
+    final decoded = jsonDecode(response.body);
+
+    print('🔄 updateUserStatus decoded type: ${decoded.runtimeType}');
+    print('🔄 updateUserStatus data type: ${decoded['data']?.runtimeType}');
+
+    if (decoded is Map<String, dynamic>) {
+      return decoded;
+    }
+
+    // CAST PAKSA (kasus LinkedMap)
+    if (decoded is Map) {
+      return Map<String, dynamic>.from(decoded);
+    }
+
+    throw Exception('Invalid response format');
+  }
+
+  static Future<Map<String, dynamic>> getUserDetails({
+    required String token,
+    required int userId,
+  }) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/admin/users/$userId'),
+        headers: _getHeaders(token),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        return {'status': false, 'message': 'Failed to load user details'};
+      }
+    } catch (e) {
+      return _handleError(e);
     }
   }
 }

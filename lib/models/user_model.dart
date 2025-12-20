@@ -3,20 +3,22 @@ class User {
   final String name;
   final String email;
   final String? token;
-  // 🔑 Fields added to match the Python model
   final String? role;
   final String? status;
-  final String? timestamp; // Use String to hold the formatted date/time
+  final String? password; // 🔑 Untuk kebutuhan login/register
+  final String? createdAt; // Sesuai database: created_at
+  final String? updatedAt; // Sesuai database: updated_at
 
   User({
     this.id,
     required this.name,
     required this.email,
     this.token,
-    // 🔑 Required in constructor
     this.role,
     this.status,
-    this.timestamp,
+    this.password,
+    this.createdAt,
+    this.updatedAt,
   });
 
   // --- fromJson: Reads data from the API response ---
@@ -26,11 +28,11 @@ class User {
       name: json['name'] ?? '',
       email: json['email'] ?? '',
       token: json['token'],
-      // 🔑 Reading the new fields from JSON
       role: json['role']?.toString(),
       status: json['status']?.toString(),
-      timestamp: json['timestamp']
-          ?.toString(), // Use the correct spelling 'timestamp'
+      password: json['password']?.toString(),
+      createdAt: json['created_at']?.toString(), // ❗ Perhatikan underscore
+      updatedAt: json['updated_at']?.toString(), // ❗ Perhatikan underscore
     );
   }
 
@@ -41,10 +43,11 @@ class User {
       'name': name,
       'email': email,
       'token': token,
-      // 🔑 Including the new fields in the JSON map
       'role': role,
       'status': status,
-      'timestamp': timestamp, // Use the correct spelling 'timestamp'
+      'password': password,
+      'created_at': createdAt, // ❗ Gunakan underscore untuk konsisten dengan BE
+      'updated_at': updatedAt,
     };
   }
 }
