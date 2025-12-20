@@ -522,7 +522,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [deepForest.withOpacity(0.9), darkTeal],
+                    colors: [deepForest.withValues(alpha: 0.9), darkTeal],
                     stops: const [0.0, 1.0],
                   ),
                   borderRadius: const BorderRadius.only(
@@ -594,7 +594,9 @@ class _DashboardPageState extends State<DashboardPage> {
                                       style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w600,
-                                        color: Colors.white.withOpacity(0.9),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.9,
+                                        ),
                                         letterSpacing: 0.5,
                                       ),
                                     ),
@@ -617,10 +619,10 @@ class _DashboardPageState extends State<DashboardPage> {
                                   vertical: 8,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.15),
+                                  color: Colors.white.withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(20),
                                   border: Border.all(
-                                    color: Colors.white.withOpacity(0.3),
+                                    color: Colors.white.withValues(alpha: 0.3),
                                   ),
                                 ),
                                 child: Row(
@@ -650,14 +652,14 @@ class _DashboardPageState extends State<DashboardPage> {
                               Icon(
                                 Icons.update_rounded,
                                 size: 16,
-                                color: Colors.white.withOpacity(0.8),
+                                color: Colors.white.withValues(alpha: 0.8),
                               ),
                               const SizedBox(width: 8),
                               Text(
                                 'Last update: ${_getLastUpdateTime()}',
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: Colors.white.withOpacity(0.8),
+                                  color: Colors.white.withValues(alpha: 0.8),
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -673,7 +675,9 @@ class _DashboardPageState extends State<DashboardPage> {
                                     borderRadius: BorderRadius.circular(20),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: limeAccent.withOpacity(0.4),
+                                        color: limeAccent.withValues(
+                                          alpha: 0.4,
+                                        ),
                                         blurRadius: 10,
                                         offset: const Offset(0, 3),
                                       ),
@@ -715,7 +719,7 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
             ),
             elevation: 15,
-            shadowColor: deepForest.withOpacity(0.5),
+            shadowColor: deepForest.withValues(alpha: 0.5),
             backgroundColor: deepForest,
             actions: [
               if (isLoading)
@@ -727,7 +731,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       height: 30,
                       padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(15),
                       ),
                       child: CircularProgressIndicator(
@@ -752,17 +756,19 @@ class _DashboardPageState extends State<DashboardPage> {
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        weatherBlue.withOpacity(0.15),
-                        weatherLightBlue.withOpacity(0.08),
+                        weatherBlue.withValues(alpha: 0.15),
+                        weatherLightBlue.withValues(alpha: 0.08),
                       ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: weatherBlue.withOpacity(0.3)),
+                    border: Border.all(
+                      color: weatherBlue.withValues(alpha: 0.3),
+                    ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.03),
+                        color: Colors.black.withValues(alpha: 0.03),
                         blurRadius: 15,
                         offset: const Offset(0, 5),
                       ),
@@ -797,7 +803,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.7),
+                                color: Colors.white.withValues(alpha: 0.7),
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: _getWeatherIcon(
@@ -815,7 +821,9 @@ class _DashboardPageState extends State<DashboardPage> {
                                       Icon(
                                         Icons.location_on,
                                         size: 14,
-                                        color: deepForest.withOpacity(0.7),
+                                        color: deepForest.withValues(
+                                          alpha: 0.7,
+                                        ),
                                       ),
                                       const SizedBox(width: 4),
                                       Text(
@@ -823,7 +831,9 @@ class _DashboardPageState extends State<DashboardPage> {
                                         style: TextStyle(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w600,
-                                          color: deepForest.withOpacity(0.8),
+                                          color: deepForest.withValues(
+                                            alpha: 0.8,
+                                          ),
                                         ),
                                       ),
                                     ],
@@ -1002,10 +1012,10 @@ class _DashboardPageState extends State<DashboardPage> {
                                 vertical: 6,
                               ),
                               decoration: BoxDecoration(
-                                color: vibrantGreen.withOpacity(0.1),
+                                color: vibrantGreen.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
-                                  color: vibrantGreen.withOpacity(0.3),
+                                  color: vibrantGreen.withValues(alpha: 0.3),
                                 ),
                               ),
                               child: Row(
@@ -1047,7 +1057,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             unit: 'Celsius',
                             gradient: LinearGradient(
                               colors: [
-                                Colors.redAccent.withOpacity(0.9),
+                                Colors.redAccent.withValues(alpha: 0.9),
                                 Colors.orangeAccent,
                               ],
                               begin: Alignment.topLeft,
@@ -1062,7 +1072,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             unit: 'Percent',
                             gradient: LinearGradient(
                               colors: [
-                                Colors.blueAccent.withOpacity(0.9),
+                                Colors.blueAccent.withValues(alpha: 0.9),
                                 Colors.lightBlueAccent,
                               ],
                               begin: Alignment.topLeft,
@@ -1077,7 +1087,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             unit: 'pH Scale',
                             gradient: LinearGradient(
                               colors: [
-                                vibrantGreen.withOpacity(0.9),
+                                vibrantGreen.withValues(alpha: 0.9),
                                 limeAccent,
                               ],
                               begin: Alignment.topLeft,
@@ -1092,7 +1102,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             unit: 'mS/cm',
                             gradient: LinearGradient(
                               colors: [
-                                goldAccent.withOpacity(0.9),
+                                goldAccent.withValues(alpha: 0.9),
                                 Colors.amberAccent,
                               ],
                               begin: Alignment.topLeft,
@@ -1107,7 +1117,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             unit: 'Lux',
                             gradient: LinearGradient(
                               colors: [
-                                Colors.amber.withOpacity(0.9),
+                                Colors.amber.withValues(alpha: 0.9),
                                 Colors.yellowAccent,
                               ],
                               begin: Alignment.topLeft,
@@ -1122,7 +1132,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             unit: 'Percent',
                             gradient: LinearGradient(
                               colors: [
-                                steelBlue.withOpacity(0.9),
+                                steelBlue.withValues(alpha: 0.9),
                                 Colors.lightBlueAccent,
                               ],
                               begin: Alignment.topLeft,
@@ -1172,7 +1182,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                 vertical: 6,
                               ),
                               decoration: BoxDecoration(
-                                color: deepForest.withOpacity(0.1),
+                                color: deepForest.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(
@@ -1197,7 +1207,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             color: steelBlue,
                             gradient: LinearGradient(
                               colors: [
-                                steelBlue.withOpacity(0.9),
+                                steelBlue.withValues(alpha: 0.9),
                                 Colors.lightBlueAccent,
                               ],
                               begin: Alignment.centerLeft,
@@ -1220,7 +1230,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             color: vibrantGreen,
                             gradient: LinearGradient(
                               colors: [
-                                vibrantGreen.withOpacity(0.9),
+                                vibrantGreen.withValues(alpha: 0.9),
                                 limeAccent,
                               ],
                               begin: Alignment.centerLeft,
@@ -1247,7 +1257,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             color: royalPurple,
                             gradient: LinearGradient(
                               colors: [
-                                royalPurple.withOpacity(0.9),
+                                royalPurple.withValues(alpha: 0.9),
                                 Colors.purpleAccent,
                               ],
                               begin: Alignment.centerLeft,
@@ -1270,7 +1280,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             color: Colors.teal,
                             gradient: LinearGradient(
                               colors: [
-                                Colors.teal.withOpacity(0.9),
+                                Colors.teal.withValues(alpha: 0.9),
                                 Colors.tealAccent,
                               ],
                               begin: Alignment.centerLeft,
@@ -1294,7 +1304,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             color: goldAccent,
                             gradient: LinearGradient(
                               colors: [
-                                goldAccent.withOpacity(0.9),
+                                goldAccent.withValues(alpha: 0.9),
                                 Colors.amberAccent,
                               ],
                               begin: Alignment.centerLeft,
@@ -1317,7 +1327,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             color: darkSlate,
                             gradient: LinearGradient(
                               colors: [
-                                darkSlate.withOpacity(0.9),
+                                darkSlate.withValues(alpha: 0.9),
                                 Colors.grey.shade600,
                               ],
                               begin: Alignment.centerLeft,
@@ -1344,17 +1354,19 @@ class _DashboardPageState extends State<DashboardPage> {
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        deepForest.withOpacity(0.05),
-                        vibrantGreen.withOpacity(0.05),
+                        deepForest.withValues(alpha: 0.05),
+                        vibrantGreen.withValues(alpha: 0.05),
                       ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: vibrantGreen.withOpacity(0.2)),
+                    border: Border.all(
+                      color: vibrantGreen.withValues(alpha: 0.2),
+                    ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withValues(alpha: 0.05),
                         blurRadius: 20,
                         offset: const Offset(0, 10),
                       ),
@@ -1369,7 +1381,7 @@ class _DashboardPageState extends State<DashboardPage> {
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
-                              color: limeAccent.withOpacity(0.3),
+                              color: limeAccent.withValues(alpha: 0.3),
                               blurRadius: 15,
                               offset: const Offset(0, 5),
                             ),
@@ -1416,7 +1428,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                 child: Container(
                                   height: 6,
                                   decoration: BoxDecoration(
-                                    color: vibrantGreen.withOpacity(0.1),
+                                    color: vibrantGreen.withValues(alpha: 0.1),
                                     borderRadius: BorderRadius.circular(3),
                                   ),
                                   child: FractionallySizedBox(
@@ -1469,7 +1481,7 @@ class _DashboardPageState extends State<DashboardPage> {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: vibrantGreen.withOpacity(0.3),
+              color: vibrantGreen.withValues(alpha: 0.3),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -1513,7 +1525,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: coralRed.withOpacity(0.3),
+                      color: coralRed.withValues(alpha: 0.3),
                       blurRadius: 20,
                       offset: const Offset(0, 10),
                     ),
@@ -1541,10 +1553,12 @@ class _DashboardPageState extends State<DashboardPage> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: vibrantGreen.withOpacity(0.2)),
+                  border: Border.all(
+                    color: vibrantGreen.withValues(alpha: 0.2),
+                  ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 15,
                       offset: const Offset(0, 5),
                     ),
@@ -1578,7 +1592,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         borderRadius: BorderRadius.circular(16),
                       ),
                       elevation: 5,
-                      shadowColor: deepForest.withOpacity(0.4),
+                      shadowColor: deepForest.withValues(alpha: 0.4),
                     ),
                     child: const Text(
                       'Back to Login',
@@ -1634,18 +1648,18 @@ class _DashboardPageState extends State<DashboardPage> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            color.withOpacity(0.1),
-            color.withOpacity(0.05),
-            Colors.white.withOpacity(0.8),
+            color.withValues(alpha: 0.1),
+            color.withValues(alpha: 0.05),
+            Colors.white.withValues(alpha: 0.8),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -1665,8 +1679,8 @@ class _DashboardPageState extends State<DashboardPage> {
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        color.withOpacity(0.2),
-                        accentColor.withOpacity(0.3),
+                        color.withValues(alpha: 0.2),
+                        accentColor.withValues(alpha: 0.3),
                       ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
@@ -1674,7 +1688,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     borderRadius: BorderRadius.circular(14),
                     boxShadow: [
                       BoxShadow(
-                        color: color.withOpacity(0.2),
+                        color: color.withValues(alpha: 0.2),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -1688,9 +1702,9 @@ class _DashboardPageState extends State<DashboardPage> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
+                    color: color.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: color.withOpacity(0.3)),
+                    border: Border.all(color: color.withValues(alpha: 0.3)),
                   ),
                   child: Text(
                     subtitle,
@@ -1722,7 +1736,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    color: deepForest.withOpacity(0.9),
+                    color: deepForest.withValues(alpha: 0.9),
                   ),
                 ),
               ],
@@ -1745,14 +1759,14 @@ class _DashboardPageState extends State<DashboardPage> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         gradient: LinearGradient(
-          colors: [Colors.white, color.withOpacity(0.05)],
+          colors: [Colors.white, color.withValues(alpha: 0.05)],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         ),
-        border: Border.all(color: color.withOpacity(0.15)),
+        border: Border.all(color: color.withValues(alpha: 0.15)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 15,
             offset: const Offset(0, 5),
           ),
@@ -1773,7 +1787,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: color.withOpacity(0.3),
+                        color: color.withValues(alpha: 0.3),
                         blurRadius: 8,
                         offset: const Offset(0, 3),
                       ),
@@ -1788,7 +1802,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
+                    color: color.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
@@ -1846,20 +1860,20 @@ class _DashboardPageState extends State<DashboardPage> {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),
-        splashColor: color.withOpacity(0.2),
+        splashColor: color.withValues(alpha: 0.2),
         child: Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [Colors.white, color.withOpacity(0.05)],
+              colors: [Colors.white, color.withValues(alpha: 0.05)],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
             ),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: color.withOpacity(0.2)),
+            border: Border.all(color: color.withValues(alpha: 0.2)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.03),
+                color: Colors.black.withValues(alpha: 0.03),
                 blurRadius: 15,
                 offset: const Offset(0, 5),
               ),
@@ -1876,7 +1890,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: color.withOpacity(0.3),
+                          color: color.withValues(alpha: 0.3),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -1896,7 +1910,7 @@ class _DashboardPageState extends State<DashboardPage> {
                           border: Border.all(color: Colors.white, width: 2),
                           boxShadow: [
                             BoxShadow(
-                              color: coralRed.withOpacity(0.4),
+                              color: coralRed.withValues(alpha: 0.4),
                               blurRadius: 8,
                               offset: const Offset(0, 2),
                             ),
@@ -1947,7 +1961,7 @@ class _DashboardPageState extends State<DashboardPage> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
