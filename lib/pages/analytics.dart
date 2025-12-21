@@ -1285,11 +1285,6 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadAnalyticsData,
-            tooltip: 'Refresh',
-          ),
-          IconButton(
             icon: const Icon(Icons.download),
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -1301,12 +1296,22 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
             },
             tooltip: 'Export',
           ),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadAnalyticsData,
+            tooltip: 'Refresh',
+          ),
         ],
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.only( // 🔹 PERUBAHAN DI SINI
+                left: 16,
+                right: 16,
+                top: 16,
+                bottom: 100, // 🔹 TAMBAHKAN PADDING BOTTOM
+              ),
               child: Column(
                 children: [
                   // Period Selector
@@ -1400,19 +1405,6 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                 ],
               ),
             ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // Generate report
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Report generation started'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        },
-        backgroundColor: darkGreen,
-        child: const Icon(Icons.picture_as_pdf, color: Colors.white),
-      ),
     );
   }
 }

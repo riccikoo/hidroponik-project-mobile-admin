@@ -795,7 +795,12 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 16,
+                bottom: 100,
+              ),
               child: Column(
                 children: [
                   _buildCurrentValueCard(),
@@ -815,13 +820,15 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
                   const SizedBox(height: 20),
 
                   // Data Table
+                                    // Data Table - FULL WIDTH
                   Container(
+                    width: double.infinity,
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
+                          color: Colors.black.withOpacity(0.05),
                           blurRadius: 10,
                           offset: const Offset(0, 2),
                         ),
@@ -842,91 +849,118 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
                           ),
                         ),
                         SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: DataTable(
-                            columns: [
-                              DataColumn(
-                                label: Text(
-                                  'Time',
-                                  style: TextStyle(
-                                    color: darkGreen,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
+                          scrollDirection: Axis.vertical,
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              minWidth: MediaQuery.of(context).size.width - 32,
+                            ),
+                            child: DataTable(
+                              columnSpacing: 0,
+                              horizontalMargin: 16,
+                              dataRowMinHeight: 50,
+                              dataRowMaxHeight: 50,
+                              headingRowHeight: 50,
+                              headingTextStyle: TextStyle(
+                                color: darkGreen,
+                                fontWeight: FontWeight.w600,
                               ),
-                              DataColumn(
-                                label: Text(
-                                  'Value',
-                                  style: TextStyle(
-                                    color: darkGreen,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                              DataColumn(
-                                label: Text(
-                                  'Status',
-                                  style: TextStyle(
-                                    color: darkGreen,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ],
-                            rows: sensorHistory.take(10).map((data) {
-                              final isOptimal = _isValueOptimal(data.value);
-                              final valueColor = _getValueColor(data.value);
-
-                              return DataRow(
-                                cells: [
-                                  DataCell(
-                                    Text(
-                                      '${data.timestamp.hour}:${data.timestamp.minute.toString().padLeft(2, '0')}',
+                              columns: [
+                                DataColumn(
+                                  label: Container(
+                                    width: MediaQuery.of(context).size.width * 0.25,
+                                    child: Text(
+                                      'Time',
                                       style: TextStyle(
-                                        color: Colors.grey.shade700,
-                                      ),
-                                    ),
-                                  ),
-                                  DataCell(
-                                    Text(
-                                      '${data.value.toStringAsFixed(widget.sensorName == 'ph' || widget.sensorName == 'ec' ? 2 : 1)}${_getUnit()}',
-                                      style: TextStyle(
-                                        color: valueColor,
+                                        color: darkGreen,
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
                                   ),
-                                  DataCell(
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: isOptimal
-                                            ? Colors.green.withValues(
-                                                alpha: 0.1,
-                                              )
-                                            : Colors.orange.withValues(
-                                                alpha: 0.1,
-                                              ),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        isOptimal ? 'Optimal' : 'Check',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: isOptimal
-                                              ? Colors.green
-                                              : Colors.orange,
-                                          fontWeight: FontWeight.w600,
-                                        ),
+                                  numeric: false,
+                                ),
+                                DataColumn(
+                                  label: Container(
+                                    width: MediaQuery.of(context).size.width * 0.35,
+                                    child: Text(
+                                      'Value',
+                                      style: TextStyle(
+                                        color: darkGreen,
+                                        fontWeight: FontWeight.w600,
                                       ),
                                     ),
                                   ),
-                                ],
-                              );
-                            }).toList(),
+                                  numeric: true,
+                                ),
+                                DataColumn(
+                                  label: Container(
+                                    width: MediaQuery.of(context).size.width * 0.30,
+                                    child: Text(
+                                      'Status',
+                                      style: TextStyle(
+                                        color: darkGreen,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  numeric: false,
+                                ),
+                              ],
+                              rows: sensorHistory.take(10).map((data) {
+                                final isOptimal = _isValueOptimal(data.value);
+                                final valueColor = _getValueColor(data.value);
+
+                                return DataRow(
+                                  cells: [
+                                    DataCell(
+                                      Container(
+                                        width: MediaQuery.of(context).size.width * 0.25,
+                                        child: Text(
+                                          '${data.timestamp.hour}:${data.timestamp.minute.toString().padLeft(2, '0')}',
+                                          style: TextStyle(
+                                            color: Colors.grey.shade700,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    DataCell(
+                                      Container(
+                                        width: MediaQuery.of(context).size.width * 0.35,
+                                        child: Text(
+                                          '${data.value.toStringAsFixed(widget.sensorName == 'ph' || widget.sensorName == 'ec' ? 2 : 1)}${_getUnit()}',
+                                          style: TextStyle(
+                                            color: valueColor,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    DataCell(
+                                      Container(
+                                        width: MediaQuery.of(context).size.width * 0.30,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: isOptimal
+                                              ? Colors.green.withOpacity(0.1)
+                                              : Colors.orange.withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          isOptimal ? 'Optimal' : 'Check',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: isOptimal ? Colors.green : Colors.orange,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              }).toList(),
+                            ),
                           ),
                         ),
                         const SizedBox(height: 16),

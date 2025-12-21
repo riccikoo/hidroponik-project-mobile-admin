@@ -982,7 +982,12 @@ class _UsersPageState extends State<UsersPage> {
       onRefresh: () => _loadUsers(page: 1, showLoading: false),
       child: ListView.builder(
         controller: _scrollController,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        padding: const EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 12,
+          bottom: 100,
+        ),
         itemCount: users.length + (currentPage < totalPages ? 1 : 0),
         itemBuilder: (context, index) {
           if (index == users.length && currentPage < totalPages) {
@@ -1019,6 +1024,11 @@ class _UsersPageState extends State<UsersPage> {
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.person_add_alt_1, size: 24),
+            onPressed: _token != null ? _showAddUserDialog : null,
+            tooltip: 'Add New User',
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh, size: 24),
             onPressed: () {
               setState(() => isRefreshing = true);
@@ -1048,19 +1058,6 @@ class _UsersPageState extends State<UsersPage> {
                 : _buildUserList(),
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _token != null
-            ? _showAddUserDialog
-            : null, // Gunakan versi yang dipilih
-        backgroundColor: darkGreen,
-        foregroundColor: Colors.white,
-        elevation: 4,
-        icon: const Icon(Icons.person_add_alt_1, size: 24),
-        label: const Text(
-          'Add User',
-          style: TextStyle(fontWeight: FontWeight.w600),
-        ),
       ),
     );
   }
