@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api.dart';
-import 'messages.dart';
+import '../models/message_model.dart';
+import '../models/chatthread.dart';
 
 class ChatRoomDetailPage extends StatefulWidget {
   final ChatThread thread;
@@ -17,22 +19,33 @@ class ChatRoomDetailPage extends StatefulWidget {
 }
 
 class _ChatRoomDetailPageState extends State<ChatRoomDetailPage> {
-  // Color theme
-  final Color darkGreen = const Color(0xFF456028);
-  final Color mediumGreen = const Color(0xFF94A65E);
-  final Color lightGreen = const Color(0xFFDDDDA1);
+  // Color theme - Green theme
+  final Color primaryGreen = const Color(0xFF2E7D32);
+  final Color lightGreen = const Color(0xFF81C784);
+  final Color accentGreen = const Color(0xFF4CAF50);
+  final Color darkGreen = const Color(0xFF1B5E20);
+  final Color backgroundGreen = const Color(0xFFE8F5E9);
   final Color userMessageBg = const Color(0xFFF5F5F5);
+  final Color adminMessageBg = const Color(0xFF4CAF50);
 
-  // Controllers
+  // Controllers and state
   late TextEditingController _replyController;
   bool _isReplying = false;
-  bool _isLoadingMessages = false;
+  bool _isLoadingMessages = true;
+  List<AdminMessage> _allMessages = [];
+
+  // Admin data
+  late int _adminId;
+  late String _adminName;
+  late String _adminEmail;
 
   @override
   void initState() {
     super.initState();
     _replyController = TextEditingController();
-    _loadReplies();
+    _loadAdminData().then((_) {
+      _loadFullConversation();
+    });
   }
 
   @override
@@ -41,10 +54,128 @@ class _ChatRoomDetailPageState extends State<ChatRoomDetailPage> {
     super.dispose();
   }
 
-  Future<void> _loadReplies() async {
-    if (widget.thread.lastMessageId == null) return;
+  // Di _loadAdminData():
+  Future<void> _loadAdminData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _adminId = prefs.getInt('adminId') ?? 0; // ✅ Ini sudah benar
 
+      // Tapi jika adminId null, cek juga String
+      if (_adminId == 0) {
+        final adminIdString = prefs.getString('adminId');
+        if (adminIdString != null) {
+          try {
+            _adminId = int.parse(adminIdString);
+          } catch (e) {
+            _adminId = 0;
+          }
+        }
+      }
+
+      _adminName = prefs.getString('adminName') ?? 'Admin';
+      _adminEmail = prefs.getString('adminEmail') ?? '';
+
+      print('👤 Admin loaded - ID: $_adminId, Name: $_adminName');
+
+      if (_adminId == 0) {
+        print('⚠️ Warning: Admin ID is 0. Check login data.');
+      }
+    } catch (e) {
+      print('❌ Error loading admin data: $e');
+      _adminId = 0;
+      _adminName = 'Admin';
+      _adminEmail = '';
+    }
+  }
+
+  Future<void> _loadFullConversation() async {
     setState(() => _isLoadingMessages = true);
+
+    try {
+      final result = await ApiService.getThreadMessages(
+        token: widget.token,
+        userId: widget.thread.senderId,
+        threadId: widget.thread.threadId,
+      );
+
+      print('📦 API Response for thread ${widget.thread.threadId}: $result');
+
+      if (result['success'] == true && result['data'] != null) {
+        final messagesData = result['data']['messages'] as List<dynamic>? ?? [];
+
+        print('📨 Found ${messagesData.length} messages');
+
+        // Debug: print semua message
+        for (var i = 0; i < messagesData.length; i++) {
+          print('Message $i: ${messagesData[i]}');
+        }
+
+        final messages = messagesData.map((m) {
+          try {
+            return AdminMessage.fromJson(m);
+          } catch (e) {
+            print('❌ Error parsing message: $e, data: $m');
+            return AdminMessage(
+              id: 0,
+              message: 'Error loading message',
+              senderId: 0,
+              receiverId: widget.thread.senderId,
+              timestamp: DateTime.now(),
+              isRead: true,
+            );
+          }
+        }).toList();
+
+        setState(() {
+          _allMessages = messages;
+          _allMessages.sort(
+            (a, b) => (a.timestamp ?? DateTime.now()).compareTo(
+              b.timestamp ?? DateTime.now(),
+            ),
+          );
+          widget.thread.unreadCount = 0;
+
+          if (_allMessages.isNotEmpty) {
+            final lastMessage = _allMessages.last;
+            widget.thread.lastMessageTime =
+                lastMessage.timestamp ?? DateTime.now();
+            widget.thread.lastMessageId = lastMessage.id;
+          }
+
+          print('✅ Loaded ${_allMessages.length} messages');
+          print(
+            '🔍 First message: ${_allMessages.isNotEmpty ? _allMessages.first.message : "No messages"}',
+          );
+        });
+
+        // Mark as read
+        await _markAllAsRead();
+      } else {
+        print('❌ Failed to load conversation: ${result['message']}');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load messages: ${result['message']}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        await _loadRepliesFallback();
+      }
+    } catch (e) {
+      print('❌ Error loading conversation: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error loading conversation: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      await _loadRepliesFallback();
+    } finally {
+      setState(() => _isLoadingMessages = false);
+    }
+  }
+
+  Future<void> _loadRepliesFallback() async {
+    if (widget.thread.lastMessageId == null) return;
 
     try {
       final replies = await ApiService.getMessageReplies(
@@ -52,116 +183,137 @@ class _ChatRoomDetailPageState extends State<ChatRoomDetailPage> {
         widget.thread.lastMessageId!,
       );
 
-      if (replies.isNotEmpty) {
-        setState(() {
-          // Clear existing admin replies to avoid duplicates
-          widget.thread.messages.removeWhere((m) => m.isAdmin);
-
-          // Add fresh replies from server
-          for (var reply in replies) {
-            widget.thread.messages.add(
-              ChatMessage(
-                id: reply.id,
-                content: reply.content,
-                senderId: reply.isAdmin ? 0 : widget.thread.senderId,
-                isAdmin: reply.isAdmin,
-                timestamp: reply.timestamp,
-                isRead: true,
-              ),
-            );
-          }
-
-          // Sort by timestamp
-          widget.thread.messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
-
-          // Update last message time
-          if (widget.thread.messages.isNotEmpty) {
-            widget.thread.lastMessageTime = widget.thread.messages.last.timestamp;
-          }
-        });
-      }
+      setState(() {
+        _allMessages.clear();
+        if (widget.thread.messages.isNotEmpty) {
+          _allMessages.addAll(widget.thread.messages);
+        }
+        _allMessages.addAll(
+          replies.map((r) => AdminMessage.fromJson(r)).toList(),
+        );
+        _allMessages.sort(
+          (a, b) => (a.timestamp ?? DateTime.now()).compareTo(
+            b.timestamp ?? DateTime.now(),
+          ),
+        );
+      });
     } catch (e) {
-      print('❌ Error loading replies: $e');
-    } finally {
-      setState(() => _isLoadingMessages = false);
+      print('❌ Fallback also failed: $e');
     }
   }
 
   Future<void> _sendReply() async {
     final replyText = _replyController.text.trim();
+    if (replyText.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please enter a message'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
 
-    if (replyText.isEmpty) return;
-    if (widget.thread.lastMessageId == null) return;
+    // Validasi admin ID
+    if (_adminId == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Error: Admin not authenticated properly. Please login again.',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
 
     try {
       setState(() => _isReplying = true);
 
-      // Add optimistic reply
-      final optimisticReply = ChatMessage(
-        id: DateTime.now().millisecondsSinceEpoch,
-        content: replyText,
-        senderId: 0, // Admin ID
-        isAdmin: true,
-        timestamp: DateTime.now(),
+      // Create optimistic message with REAL admin ID
+      final optimisticMessage = AdminMessage(
+        id: DateTime.now().millisecondsSinceEpoch, // Temporary ID
+        message: replyText,
+        senderId: _adminId, // ✅ Gunakan admin ID yang sesungguhnya
+        receiverId: widget.thread.senderId,
         isRead: true,
+        timestamp: DateTime.now(),
+        sender: Sender(id: _adminId, name: _adminName, email: _adminEmail),
       );
 
+      print('📤 Sending message as admin ID: $_adminId');
+
+      // Add optimistic message to UI
       setState(() {
-        widget.thread.messages.add(optimisticReply);
-        widget.thread.lastMessageTime = DateTime.now();
+        _allMessages.add(optimisticMessage);
       });
 
       _replyController.clear();
 
       // Send to server
-      final success = await ApiService.sendReply(
-        widget.token,
-        widget.thread.lastMessageId!,
-        replyText,
+      bool success = false;
+
+      // Coba kirim dengan threadId jika ada
+      success = await ApiService.sendMessageToThread(
+        token: widget.token,
+        threadId: widget.thread.threadId,
+        message: replyText,
+        senderId: _adminId, // ✅ Kirim senderId
       );
 
       if (success) {
-        // Mark all user messages as read
-        for (var msg in widget.thread.messages.where((m) => !m.isAdmin && !m.isRead)) {
-          msg.isRead = true;
-          if (msg.id != null) {
-            await ApiService.markAdminMessageAsRead(widget.token, msg.id!);
-          }
-        }
+        print('✅ Message sent successfully');
 
-        // Update unread count
-        setState(() {
-          widget.thread.unreadCount = 0;
-        });
+        // Refresh conversation untuk mendapatkan data real dari server
+        await _loadFullConversation();
 
-        // Reload to get server ID
-        await _loadReplies();
-
-        // ignore: use_build_context_synchronously
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Reply sent'), backgroundColor: Colors.green),
-        );
-      } else {
-        // Remove optimistic reply
-        setState(() {
-          widget.thread.messages.remove(optimisticReply);
-        });
-
-        // ignore: use_build_context_synchronously
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to send reply'),
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Text('Message sent successfully'),
+              ],
+            ),
+            backgroundColor: primaryGreen,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      } else {
+        // Remove optimistic message if failed
+        setState(() {
+          _allMessages.removeWhere((msg) => msg.id == optimisticMessage.id);
+        });
+
+        print('❌ Failed to send message via API');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Text('Failed to send message'),
+              ],
+            ),
             backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
         );
       }
     } catch (e) {
-      print('❌ Error sending reply: $e');
-      // ignore: use_build_context_synchronously
+      print('❌ Error sending message: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error: ${e.toString()}'),
           backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
         ),
       );
     } finally {
@@ -171,28 +323,40 @@ class _ChatRoomDetailPageState extends State<ChatRoomDetailPage> {
 
   Future<void> _markAllAsRead() async {
     try {
-      // Find unread user messages
-      final unreadMessages = widget.thread.messages
-          .where((m) => !m.isAdmin && !m.isRead)
+      // Update local state
+      setState(() {
+        for (var msg in _allMessages.where((m) => !_isAdminMessage(m))) {
+          msg.isRead = true;
+        }
+        widget.thread.unreadCount = 0;
+      });
+
+      // Mark on server if we have message IDs
+      final unreadMessages = _allMessages
+          .where((m) => !_isAdminMessage(m) && !m.isRead)
           .toList();
 
       for (var msg in unreadMessages) {
         if (msg.id != null) {
           await ApiService.markAdminMessageAsRead(widget.token, msg.id!);
-          msg.isRead = true;
         }
       }
 
-      setState(() {
-        widget.thread.unreadCount = 0;
-      });
-
-      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Marked as read'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 1),
+          content: Row(
+            children: [
+              Icon(Icons.mark_email_read, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Text('All messages marked as read'),
+            ],
+          ),
+          backgroundColor: primaryGreen,
+          duration: Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
     } catch (e) {
@@ -200,63 +364,115 @@ class _ChatRoomDetailPageState extends State<ChatRoomDetailPage> {
     }
   }
 
+  bool _isAdminMessage(AdminMessage msg) {
+    // ✅ Gunakan adminId yang sudah diload
+    return msg.senderId == _adminId ||
+        (msg.sender != null && msg.sender!.id == _adminId) ||
+        (_adminEmail.isNotEmpty && msg.sender?.email == _adminEmail) ||
+        (msg.sender?.email?.contains('admin') ?? false);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final messages = widget.thread.messages;
     final hasUnread = widget.thread.unreadCount > 0;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: backgroundGreen,
       appBar: AppBar(
         title: Text(
           widget.thread.senderName,
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+            fontSize: 18,
+          ),
         ),
-        backgroundColor: darkGreen,
+        backgroundColor: primaryGreen,
         iconTheme: IconThemeData(color: Colors.white),
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(15)),
+        ),
         actions: [
           if (hasUnread)
-            IconButton(
-              icon: Icon(Icons.mark_email_read),
-              onPressed: _markAllAsRead,
-              tooltip: 'Mark all as read',
+            Container(
+              margin: EdgeInsets.only(right: 8),
+              decoration: BoxDecoration(
+                color: Colors.red,
+                shape: BoxShape.circle,
+              ),
+              padding: EdgeInsets.all(2),
+              child: IconButton(
+                icon: Icon(Icons.mark_email_read, size: 20),
+                onPressed: _markAllAsRead,
+                tooltip: 'Mark all as read',
+                color: Colors.white,
+              ),
             ),
-          IconButton(
-            icon: Icon(Icons.refresh),
-            onPressed: _loadReplies,
-            tooltip: 'Refresh chat',
+          Container(
+            margin: EdgeInsets.only(right: 12),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withOpacity(0.2),
+            ),
+            child: IconButton(
+              icon: Icon(Icons.refresh, size: 22),
+              onPressed: _loadFullConversation,
+              tooltip: 'Refresh chat',
+              color: Colors.white,
+            ),
           ),
         ],
       ),
       body: Column(
         children: [
-          // Thread header
+          // User info card
           Container(
+            margin: EdgeInsets.all(12),
             padding: EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.white,
-              border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+              borderRadius: BorderRadius.circular(15),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 4,
-                  offset: Offset(0, 2),
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 10,
+                  offset: Offset(0, 4),
                 ),
               ],
             ),
             child: Row(
               children: [
-                CircleAvatar(
-                  backgroundColor: Colors.blue.shade100,
-                  child: Text(
-                    widget.thread.senderName.substring(0, 1).toUpperCase(),
-                    style: TextStyle(
-                      color: Colors.blue.shade800,
-                      fontWeight: FontWeight.bold,
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [lightGreen, accentGreen],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: primaryGreen.withOpacity(0.3),
+                        blurRadius: 6,
+                        offset: Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Text(
+                      widget.thread.senderName.substring(0, 1).toUpperCase(),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
-                SizedBox(width: 12),
+                SizedBox(width: 15),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -265,27 +481,53 @@ class _ChatRoomDetailPageState extends State<ChatRoomDetailPage> {
                         widget.thread.senderName,
                         style: TextStyle(
                           fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w700,
                           color: darkGreen,
                         ),
                       ),
+                      SizedBox(height: 4),
                       Text(
                         widget.thread.senderEmail,
-                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Total Messages: ${_allMessages.length}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: lightGreen,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Admin ID: $_adminId',
+                        style: TextStyle(fontSize: 10, color: Colors.grey),
                       ),
                     ],
                   ),
                 ),
                 if (hasUnread)
-                  ElevatedButton.icon(
-                    onPressed: _markAllAsRead,
-                    icon: Icon(Icons.mark_email_read, size: 16),
-                    label: Text('Mark Read'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      elevation: 0,
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.red, Colors.orange],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '${widget.thread.unreadCount} unread',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
               ],
@@ -295,22 +537,20 @@ class _ChatRoomDetailPageState extends State<ChatRoomDetailPage> {
           // Loading indicator
           if (_isLoadingMessages)
             Container(
-              padding: EdgeInsets.all(8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              margin: EdgeInsets.symmetric(vertical: 20),
+              child: Column(
                 children: [
-                  SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: darkGreen,
-                    ),
+                  CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(primaryGreen),
+                    strokeWidth: 3,
                   ),
-                  SizedBox(width: 8),
+                  SizedBox(height: 12),
                   Text(
-                    'Loading messages...',
-                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                    'Loading conversation...',
+                    style: TextStyle(
+                      color: darkGreen.withOpacity(0.7),
+                      fontSize: 14,
+                    ),
                   ),
                 ],
               ),
@@ -318,48 +558,73 @@ class _ChatRoomDetailPageState extends State<ChatRoomDetailPage> {
 
           // Chat messages
           Expanded(
-            child: messages.isEmpty
+            child: _allMessages.isEmpty && !_isLoadingMessages
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
-                          Icons.forum_outlined,
-                          size: 64,
-                          color: Colors.grey.shade300,
+                        Container(
+                          width: 100,
+                          height: 100,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 10,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            Icons.forum_outlined,
+                            size: 50,
+                            color: lightGreen,
+                          ),
                         ),
-                        SizedBox(height: 16),
+                        SizedBox(height: 20),
                         Text(
                           'Start a conversation',
                           style: TextStyle(
-                            color: Colors.grey.shade600,
-                            fontSize: 16,
+                            color: darkGreen,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
                           ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'Send your first message to ${widget.thread.senderName}',
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 14,
+                          ),
+                          textAlign: TextAlign.center,
                         ),
                       ],
                     ),
                   )
                 : ListView.builder(
                     reverse: true,
-                    padding: EdgeInsets.all(16),
-                    itemCount: messages.length,
+                    padding: EdgeInsets.all(12),
+                    itemCount: _allMessages.length,
                     itemBuilder: (context, index) {
-                      final msg = messages[messages.length - 1 - index];
+                      final msg = _allMessages[_allMessages.length - 1 - index];
                       return _buildChatBubble(msg);
                     },
                   ),
           ),
 
-          // Reply input
+          // Reply input section
           Container(
-            padding: EdgeInsets.all(16),
+            padding: EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: Colors.white,
               border: Border(top: BorderSide(color: Colors.grey.shade200)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
-                  blurRadius: 8,
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
                   offset: Offset(0, -2),
                 ),
               ],
@@ -372,6 +637,13 @@ class _ChatRoomDetailPageState extends State<ChatRoomDetailPage> {
                       color: Colors.grey.shade50,
                       borderRadius: BorderRadius.circular(25),
                       border: Border.all(color: Colors.grey.shade300),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.02),
+                          blurRadius: 4,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
                     ),
                     child: Row(
                       children: [
@@ -381,17 +653,22 @@ class _ChatRoomDetailPageState extends State<ChatRoomDetailPage> {
                             controller: _replyController,
                             decoration: InputDecoration(
                               hintText: 'Type your reply...',
+                              hintStyle: TextStyle(
+                                color: Colors.grey.shade500,
+                                fontSize: 14,
+                              ),
                               border: InputBorder.none,
                             ),
                             maxLines: 3,
                             minLines: 1,
+                            style: TextStyle(fontSize: 14, color: darkGreen),
                             onSubmitted: (_) {
                               if (!_isReplying) _sendReply();
                             },
                           ),
                         ),
                         IconButton(
-                          icon: Icon(Icons.attach_file, color: Colors.grey),
+                          icon: Icon(Icons.attach_file, color: lightGreen),
                           onPressed: () {
                             // TODO: Implement file attachment
                           },
@@ -400,36 +677,41 @@ class _ChatRoomDetailPageState extends State<ChatRoomDetailPage> {
                     ),
                   ),
                 ),
-                SizedBox(width: 12),
+                SizedBox(width: 10),
                 Container(
+                  width: 50,
+                  height: 50,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [darkGreen, mediumGreen],
+                      colors: [primaryGreen, accentGreen],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: darkGreen.withValues(alpha: 0.3),
+                        color: primaryGreen.withOpacity(0.4),
                         blurRadius: 8,
-                        offset: Offset(0, 2),
+                        offset: Offset(0, 3),
                       ),
                     ],
                   ),
-                  child: IconButton(
-                    icon: _isReplying
-                        ? SizedBox(
+                  child: _isReplying
+                      ? Center(
+                          child: SizedBox(
                             width: 20,
                             height: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
                               color: Colors.white,
                             ),
-                          )
-                        : Icon(Icons.send, color: Colors.white),
-                    onPressed: _isReplying ? null : _sendReply,
-                  ),
+                          ),
+                        )
+                      : IconButton(
+                          icon: Icon(Icons.send, color: Colors.white, size: 22),
+                          onPressed: _sendReply,
+                          tooltip: 'Send as Admin (ID: $_adminId)',
+                        ),
                 ),
               ],
             ),
@@ -439,8 +721,13 @@ class _ChatRoomDetailPageState extends State<ChatRoomDetailPage> {
     );
   }
 
-  Widget _buildChatBubble(ChatMessage msg) {
-    final isAdmin = msg.isAdmin;
+  Widget _buildChatBubble(AdminMessage msg) {
+    // Gunakan fungsi _isAdminMessage yang sudah diperbaiki
+    final isAdmin = _isAdminMessage(msg);
+
+    print(
+      '💬 Building bubble - Message: "${msg.message}", SenderId: ${msg.senderId}, IsAdmin: $isAdmin, AdminId: $_adminId',
+    );
 
     return Container(
       margin: EdgeInsets.only(bottom: 12),
@@ -491,11 +778,11 @@ class _ChatRoomDetailPageState extends State<ChatRoomDetailPage> {
                   ),
                   padding: EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: isAdmin ? darkGreen : userMessageBg,
+                    color: isAdmin ? adminMessageBg : userMessageBg,
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
+                        color: Colors.black.withOpacity(0.05),
                         blurRadius: 4,
                         offset: Offset(0, 2),
                       ),
@@ -504,8 +791,22 @@ class _ChatRoomDetailPageState extends State<ChatRoomDetailPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Sender name for admin messages
+                      if (isAdmin && msg.sender != null)
+                        Padding(
+                          padding: EdgeInsets.only(bottom: 4),
+                          child: Text(
+                            msg.sender?.name ?? 'Admin',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white.withOpacity(0.9),
+                            ),
+                          ),
+                        ),
+
                       Text(
-                        msg.content,
+                        msg.message ?? '[No message]',
                         style: TextStyle(
                           color: isAdmin ? Colors.white : Colors.black87,
                           fontSize: 14,
@@ -517,11 +818,11 @@ class _ChatRoomDetailPageState extends State<ChatRoomDetailPage> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            _formatTime(msg.timestamp),
+                            _formatTime(msg.timestamp ?? DateTime.now()),
                             style: TextStyle(
                               fontSize: 10,
                               color: isAdmin
-                                  ? Colors.white.withValues(alpha: 0.8)
+                                  ? Colors.white.withOpacity(0.8)
                                   : Colors.grey.shade600,
                             ),
                           ),
@@ -530,8 +831,12 @@ class _ChatRoomDetailPageState extends State<ChatRoomDetailPage> {
                             Icon(
                               Icons.done_all,
                               size: 12,
-                              color: Colors.white.withValues(alpha: 0.8),
+                              color: Colors.white.withOpacity(0.8),
                             ),
+                          if (!isAdmin && msg.isRead)
+                            Icon(Icons.done_all, size: 12, color: Colors.blue),
+                          if (!isAdmin && !msg.isRead)
+                            Icon(Icons.done, size: 12, color: Colors.grey),
                         ],
                       ),
                     ],

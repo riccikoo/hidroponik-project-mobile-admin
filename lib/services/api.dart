@@ -1,5 +1,8 @@
 import 'dart:convert';
+import 'dart:math';
+import 'package:hidroponik_project_admin/models/chatthread.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/sensor_model.dart';
 import '../models/message_model.dart';
 
@@ -43,6 +46,7 @@ class ApiService {
       );
 
       print('📥 Login Response Status: ${response.statusCode}');
+      print('📥 Response Body: ${response.body}');
 
       // Handle non-200 responses
       if (response.statusCode != 200) {
@@ -75,7 +79,49 @@ class ApiService {
           };
         }
 
+        // ✅ PERBAIKAN: Parsing ID dengan benar
+        final prefs = await SharedPreferences.getInstance();
+
+        // Debug userData structure
+        print('📊 User Data Structure:');
+        userData.forEach((key, value) {
+          print('  $key: $value (${value.runtimeType})');
+        });
+
+        // Handle ID - bisa berupa String atau int
+        final dynamic idValue = userData['id'];
+        int adminId = 0;
+
+        if (idValue != null) {
+          if (idValue is int) {
+            adminId = idValue;
+          } else if (idValue is String) {
+            try {
+              adminId = int.parse(idValue);
+            } catch (e) {
+              print('⚠️ Cannot parse ID string: $idValue');
+              adminId = 0;
+            }
+          } else if (idValue is double) {
+            adminId = idValue.toInt();
+          }
+        }
+
+        // Simpan data ke SharedPreferences
+        await prefs.setString('token', token);
+        await prefs.setInt('adminId', adminId);
+        await prefs.setString(
+          'adminName',
+          userData['name']?.toString() ?? 'Admin',
+        );
+        await prefs.setString(
+          'adminEmail',
+          userData['email']?.toString() ?? '',
+        );
+
         print('✅ Login successful for admin: ${userData['email']}');
+        print('✅ Saved admin data - ID: $adminId, Name: ${userData['name']}');
+        print('✅ Token saved: ${token.substring(0, min(20, token.length))}...');
 
         return {'status': true, 'token': token, 'user': userData};
       } else {
@@ -85,7 +131,8 @@ class ApiService {
         };
       }
     } catch (e) {
-      return _handleError(e);
+      print('❌ Login error: $e');
+      return {'status': false, 'message': 'Terjadi kesalahan: ${e.toString()}'};
     }
   }
 
@@ -408,54 +455,6 @@ class ApiService {
     }
   }
 
-  static Future<bool> sendReply(
-    String token,
-    int messageId,
-    String content,
-  ) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/admin/messages/$messageId/reply'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({'content': content}),
-      );
-
-      if (response.statusCode == 201) {
-        return true;
-      }
-      return false;
-    } catch (e) {
-      print('Error sending reply: $e');
-      return false;
-    }
-  }
-
-  static Future<List<dynamic>> getAllThreads(String token) async {
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/admin/messages/threads'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Accept': 'application/json',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['success'] == true) {
-          return data['data']['threads'] ?? [];
-        }
-      }
-      return [];
-    } catch (e) {
-      print('Error getting threads: $e');
-      return [];
-    }
-  }
-
   static Future<Map<String, dynamic>> getUsers({
     required String token,
     int page = 1,
@@ -599,6 +598,260 @@ class ApiService {
       }
     } catch (e) {
       return _handleError(e);
+    }
+  }
+
+  // Di getAllThreads method, perbaiki mapping:
+  static Future<List<ChatThread>> getAllThreads(String token) async {
+    try {
+      print('📦 Fetching all threads...');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/admin/messages/threads'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        print('📦 Threads response:');
+        print('Success: ${data['success']}');
+        print('Total threads: ${data['data']['total_threads']}');
+
+        if (data['success'] == true && data['data']['threads'] != null) {
+          final threads = data['data']['threads'] as List;
+          final List<ChatThread> chatThreads = [];
+
+          for (var thread in threads) {
+            print('📦 Processing thread: ${thread['user_name']}');
+
+            // Parse last message
+            AdminMessage? lastAdminMessage;
+            if (thread['last_message'] != null) {
+              final lastMsg = thread['last_message'];
+              lastAdminMessage = AdminMessage(
+                id: lastMsg['id'],
+                message: lastMsg['content'], // content dari last_message
+                senderId: lastMsg['is_admin'] == true ? 0 : thread['user_id'],
+                receiverId: null, // Tidak ada di response
+                isRead: thread['unread_count'] == 0,
+                timestamp: lastMsg['timestamp'] != null
+                    ? DateTime.parse(lastMsg['timestamp'])
+                    : null,
+                sender: Sender(
+                  id: thread['user_id'],
+                  name: thread['user_name'],
+                  email: thread['user_email'],
+                ),
+              );
+            }
+
+            // Create chat thread
+            final chatThread = ChatThread(
+              threadId: thread['thread_id']?.toString() ?? 'unknown',
+              senderId: thread['user_id'],
+              senderName: thread['user_name'] ?? 'User',
+              senderEmail: thread['user_email'] ?? 'user@email.com',
+              messages: lastAdminMessage != null ? [lastAdminMessage] : [],
+              unreadCount: thread['unread_count'] ?? 0,
+              lastMessageTime: thread['last_message']['timestamp'] != null
+                  ? DateTime.parse(thread['last_message']['timestamp'])
+                  : DateTime.now(),
+              lastMessageId:
+                  thread['last_message_id'] ?? thread['last_message']['id'],
+            );
+
+            chatThreads.add(chatThread);
+          }
+
+          print('📦 Successfully loaded ${chatThreads.length} threads');
+          return chatThreads;
+        }
+      } else {
+        print('❌ Threads API failed: ${response.statusCode}');
+        print('Response: ${response.body}');
+      }
+      return [];
+    } catch (e) {
+      print('❌ Error getting threads: $e');
+      return [];
+    }
+  }
+
+  // Update getThreadMessages untuk parsing yang benar:
+  static Future<Map<String, dynamic>> getThreadMessages({
+    required String token,
+    int? userId,
+    String? threadId,
+  }) async {
+    try {
+      print('💬 Fetching thread messages...');
+
+      final response = await http.get(
+        Uri.parse(
+          '$baseUrl/api/admin/messages',
+        ).replace(queryParameters: {'user_id': userId.toString()}),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
+
+      print('💬 Thread messages response: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        if (data['success'] == true && data['data'] != null) {
+          final messages = data['data'] as List? ?? [];
+          final adminMessages = messages
+              .map((m) => AdminMessage.fromJson(m))
+              .where((msg) => msg.senderId == 0 || msg.senderId == userId)
+              .toList();
+
+          adminMessages.sort(
+            (a, b) => (a.timestamp ?? DateTime.now()).compareTo(
+              b.timestamp ?? DateTime.now(),
+            ),
+          );
+
+          return {
+            'success': true,
+            'data': {'messages': adminMessages},
+          };
+        }
+      }
+
+      return {'success': false, 'message': 'Failed to load thread messages'};
+    } catch (e) {
+      print('❌ Error getting thread messages: $e');
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  static Future<bool> sendNewMessage(
+    String token,
+    int userId,
+    String message,
+  ) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/admin/messages/send'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'user_id': userId, 'message': message}),
+      );
+
+      return response.statusCode == 201;
+    } catch (e) {
+      print('Error sending new message: $e');
+      return false;
+    }
+  }
+
+  // Method untuk membuat pesan baru (jika tidak ada thread)
+  static Future<bool> createNewMessage({
+    required String token,
+    required int receiverId,
+    required String message,
+    required int senderId,
+  }) async {
+    try {
+      print('📤 Creating new message to receiver: $receiverId');
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/admin/messages/new'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'receiver_id': receiverId,
+          'message': message,
+          'sender_id': senderId,
+        }),
+      );
+
+      print('📥 Response Status: ${response.statusCode}');
+      print('📥 Response Body: ${response.body}');
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['success'] == true || data['status'] == true;
+      }
+
+      return false;
+    } catch (e) {
+      print('❌ Error creating new message: $e');
+      return false;
+    }
+  }
+
+  // Method untuk mengirim pesan dalam thread (alternative)
+  static Future<bool> sendMessageToThread({
+    required String token,
+    required int threadId,
+    required String message,
+    required int senderId,
+  }) async {
+    try {
+      print('📤 Sending to thread: $threadId');
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/admin/messages/thread/$threadId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'message': message, 'sender_id': senderId}),
+      );
+
+      print('📥 Response: ${response.statusCode}');
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['success'] == true;
+      }
+
+      return false;
+    } catch (e) {
+      print('❌ Error sending to thread: $e');
+      return false;
+    }
+  }
+
+  // Your existing sendReply method
+  static Future<bool> sendReply(
+    String token,
+    int messageId,
+    String content,
+  ) async {
+    try {
+      print('📤 Replying to message: $messageId');
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/admin/messages/$messageId/reply'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'content': content}),
+      );
+
+      print('📥 Reply Response: ${response.statusCode}');
+
+      if (response.statusCode == 201) {
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print('Error sending reply: $e');
+      return false;
     }
   }
 }

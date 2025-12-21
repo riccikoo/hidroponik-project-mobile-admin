@@ -3,7 +3,7 @@ class AdminMessage {
   final int? senderId;
   final int? receiverId;
   final String? message; // Field dari backend: 'message'
-  final bool isRead;
+  bool isRead;
   final DateTime? timestamp; // Field dari backend: 'timestamp'
   final Sender? sender;
 
@@ -17,6 +17,17 @@ class AdminMessage {
     this.sender,
   });
 
+  // Helper getters
+  bool get isAdmin {
+    // Logic: admin memiliki senderId = 0 atau email mengandung 'admin'
+    return senderId == 0 ||
+        (sender?.email?.toLowerCase().contains('@admin') ?? false) ||
+        (sender?.name?.toLowerCase().contains('admin') ?? false);
+  }
+
+  // Alias untuk message agar kompatibel dengan kode lama
+  String? get content => message;
+
   factory AdminMessage.fromJson(Map<String, dynamic> json) {
     try {
       return AdminMessage(
@@ -29,7 +40,7 @@ class AdminMessage {
         receiverId: json['receiver_id'] is int
             ? json['receiver_id']
             : int.tryParse(json['receiver_id'].toString()),
-        message: json['message']?.toString(), // Field: 'message'
+        message: json['message']?.toString() ?? json['content']?.toString(),
         isRead:
             json['is_read']?.toString() == 'true' ||
             json['is_read'] == true ||
