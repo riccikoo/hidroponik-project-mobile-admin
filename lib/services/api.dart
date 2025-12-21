@@ -4,7 +4,7 @@ import '../models/sensor_model.dart';
 import '../models/message_model.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://localhost:5000';
+  static const String baseUrl = 'https://5bb2534198ba.ngrok-free.app';
 
   // Helper untuk headers
   static Map<String, String> _getHeaders(String token) {
@@ -153,7 +153,6 @@ class ApiService {
       return _handleError(e);
     }
   }
-
 
   static Future<Map<String, dynamic>> getQuickStats(String token) async {
     try {
@@ -528,25 +527,16 @@ class ApiService {
         if (parsedJson is Map) {
           return Map<String, dynamic>.from(parsedJson);
         }
-        return {
-          'status': false,
-          'message': 'Invalid response format',
-        };
+        return {'status': false, 'message': 'Invalid response format'};
       } else if (response.statusCode == 400) {
         return {
           'status': false,
           'message': 'Bad request. Please check your data.',
         };
       } else if (response.statusCode == 409) {
-        return {
-          'status': false,
-          'message': 'Email already exists',
-        };
+        return {'status': false, 'message': 'Email already exists'};
       } else if (response.statusCode == 403) {
-        return {
-          'status': false,
-          'message': 'Access denied. Admin only.',
-        };
+        return {'status': false, 'message': 'Access denied. Admin only.'};
       } else {
         return {
           'status': false,
