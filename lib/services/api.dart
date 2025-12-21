@@ -4,7 +4,7 @@ import '../models/sensor_model.dart';
 import '../models/message_model.dart';
 
 class ApiService {
-  static const String baseUrl = 'https://5bb2534198ba.ngrok-free.app';
+  static const String baseUrl = 'http://localhost:5000';
 
   // Helper untuk headers
   static Map<String, String> _getHeaders(String token) {
