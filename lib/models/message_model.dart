@@ -47,7 +47,9 @@ class AdminMessage {
             json['is_read'] == 1,
         timestamp:
             json['timestamp'] != null && json['timestamp'].toString().isNotEmpty
-            ? DateTime.parse(json['timestamp'].toString())
+            ? DateTime.parse(
+                json['timestamp'].toString(),
+              ).add(const Duration(hours: 7))
             : null,
         sender: json['sender'] != null
             ? Sender.fromJson(Map<String, dynamic>.from(json['sender']))
