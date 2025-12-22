@@ -691,9 +691,12 @@ class ApiService {
       print('💬 Fetching thread messages...');
 
       final response = await http.get(
-        Uri.parse(
-          '$baseUrl/api/admin/messages',
-        ).replace(queryParameters: {'user_id': userId.toString()}),
+        Uri.parse('$baseUrl/api/admin/messages/thread').replace(
+          queryParameters: {
+            if (userId != null) 'user_id': userId.toString(),
+            if (threadId != null) 'thread_id': threadId,
+          },
+        ),
         headers: {
           'Authorization': 'Bearer $token',
           'Accept': 'application/json',
@@ -702,30 +705,33 @@ class ApiService {
 
       print('💬 Thread messages response: ${response.statusCode}');
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-
-        if (data['success'] == true && data['data'] != null) {
-          final messages = data['data'] as List? ?? [];
-          final adminMessages = messages
-              .map((m) => AdminMessage.fromJson(m))
-              .where((msg) => msg.senderId == 0 || msg.senderId == userId)
-              .toList();
-
-          adminMessages.sort(
-            (a, b) => (a.timestamp ?? DateTime.now()).compareTo(
-              b.timestamp ?? DateTime.now(),
-            ),
-          );
-
-          return {
-            'success': true,
-            'data': {'messages': adminMessages},
-          };
-        }
+      if (response.statusCode != 200) {
+        return {'success': false, 'message': 'HTTP ${response.statusCode}'};
       }
 
-      return {'success': false, 'message': 'Failed to load thread messages'};
+      final Map<String, dynamic> data = Map<String, dynamic>.from(
+        jsonDecode(response.body),
+      );
+
+      if (data['success'] != true || data['data'] == null) {
+        return {'success': false, 'message': 'Invalid response'};
+      }
+
+      // 🔥 INI KUNCI UTAMA
+      final List rawMessages = data['data']['messages'] ?? [];
+
+      final List<AdminMessage> messages = rawMessages
+          .map((m) => AdminMessage.fromJson(Map<String, dynamic>.from(m)))
+          .toList();
+
+      return {
+        'success': true,
+        'data': {
+          'thread_id': data['data']['thread_id'],
+          'user': data['data']['user'],
+          'messages': messages,
+        },
+      };
     } catch (e) {
       print('❌ Error getting thread messages: $e');
       return {'success': false, 'message': e.toString()};
@@ -739,7 +745,7 @@ class ApiService {
   ) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/api/admin/messages/send'),
+        Uri.parse('$baseUrl/api/admin/messages/reply'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -795,7 +801,7 @@ class ApiService {
   // Method untuk mengirim pesan dalam thread (alternative)
   static Future<bool> sendMessageToThread({
     required String token,
-    required int threadId,
+    required String threadId,
     required String message,
     required int senderId,
   }) async {
@@ -826,13 +832,14 @@ class ApiService {
   }
 
   // Your existing sendReply method
-  static Future<bool> sendReply(
-    String token,
-    int messageId,
-    String content,
-  ) async {
+  static Future<bool> sendReply({
+    required String token,
+    required int messageId,
+    required String content,
+  }) async {
     try {
-      print('📤 Replying to message: $messageId');
+      print('📤 Replying to message ID: $messageId');
+      print('📤 Content: $content');
 
       final response = await http.post(
         Uri.parse('$baseUrl/api/admin/messages/$messageId/reply'),
@@ -843,14 +850,12 @@ class ApiService {
         body: jsonEncode({'content': content}),
       );
 
-      print('📥 Reply Response: ${response.statusCode}');
+      print('📥 Reply Response Status: ${response.statusCode}');
+      print('📥 Reply Response Body: ${response.body}');
 
-      if (response.statusCode == 201) {
-        return true;
-      }
-      return false;
+      return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
-      print('Error sending reply: $e');
+      print('❌ Error sending reply: $e');
       return false;
     }
   }

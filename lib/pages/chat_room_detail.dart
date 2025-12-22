@@ -110,21 +110,9 @@ class _ChatRoomDetailPageState extends State<ChatRoomDetailPage> {
           print('Message $i: ${messagesData[i]}');
         }
 
-        final messages = messagesData.map((m) {
-          try {
-            return AdminMessage.fromJson(m);
-          } catch (e) {
-            print('❌ Error parsing message: $e, data: $m');
-            return AdminMessage(
-              id: 0,
-              message: 'Error loading message',
-              senderId: 0,
-              receiverId: widget.thread.senderId,
-              timestamp: DateTime.now(),
-              isRead: true,
-            );
-          }
-        }).toList();
+        final List<AdminMessage> messages = messagesData
+            .whereType<AdminMessage>()
+            .toList();
 
         setState(() {
           _allMessages = messages;
@@ -205,117 +193,94 @@ class _ChatRoomDetailPageState extends State<ChatRoomDetailPage> {
   Future<void> _sendReply() async {
     final replyText = _replyController.text.trim();
     if (replyText.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Please enter a message'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please enter a message')));
       return;
     }
 
-    // Validasi admin ID
     if (_adminId == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Error: Admin not authenticated properly. Please login again.',
-          ),
-          backgroundColor: Colors.red,
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Admin not authenticated')));
       return;
     }
 
     try {
       setState(() => _isReplying = true);
 
-      // Create optimistic message with REAL admin ID
+      // 🔥 OPTIMISTIC MESSAGE
       final optimisticMessage = AdminMessage(
-        id: DateTime.now().millisecondsSinceEpoch, // Temporary ID
+        id: DateTime.now().millisecondsSinceEpoch,
         message: replyText,
-        senderId: _adminId, // ✅ Gunakan admin ID yang sesungguhnya
+        senderId: _adminId,
         receiverId: widget.thread.senderId,
         isRead: true,
         timestamp: DateTime.now(),
         sender: Sender(id: _adminId, name: _adminName, email: _adminEmail),
       );
 
-      print('📤 Sending message as admin ID: $_adminId');
-
-      // Add optimistic message to UI
       setState(() {
         _allMessages.add(optimisticMessage);
       });
 
       _replyController.clear();
 
-      // Send to server
-      bool success = false;
+      int? _getLastUserMessageId() {
+        final userMessages = _allMessages
+            .where((m) => !_isAdminMessage(m))
+            .toList();
 
-      // Coba kirim dengan threadId jika ada
-      success = await ApiService.sendMessageToThread(
-        token: widget.token,
-        threadId: widget.thread.threadId,
-        message: replyText,
-        senderId: _adminId, // ✅ Kirim senderId
-      );
+        if (userMessages.isEmpty) return null;
 
-      if (success) {
-        print('✅ Message sent successfully');
-
-        // Refresh conversation untuk mendapatkan data real dari server
-        await _loadFullConversation();
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white, size: 20),
-                SizedBox(width: 8),
-                Text('Message sent successfully'),
-              ],
-            ),
-            backgroundColor: primaryGreen,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
+        userMessages.sort(
+          (a, b) => (b.timestamp ?? DateTime.now()).compareTo(
+            a.timestamp ?? DateTime.now(),
           ),
         );
-      } else {
-        // Remove optimistic message if failed
+
+        return userMessages.first.id;
+      }
+
+      final lastUserMessageId = _getLastUserMessageId();
+
+      if (lastUserMessageId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cannot reply: no user message found'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      print('📤 Replying to USER message ID: $lastUserMessageId');
+
+      final success = await ApiService.sendReply(
+        token: widget.token,
+        messageId: lastUserMessageId, // ✅ FIXED
+        content: replyText,
+      );
+
+      if (!success) {
+        // rollback optimistic UI
         setState(() {
-          _allMessages.removeWhere((msg) => msg.id == optimisticMessage.id);
+          _allMessages.removeWhere((m) => m.id == optimisticMessage.id);
         });
 
-        print('❌ Failed to send message via API');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.error_outline, color: Colors.white, size: 20),
-                SizedBox(width: 8),
-                Text('Failed to send message'),
-              ],
-            ),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Failed to send reply')));
+        return;
       }
+
+      // 🔄 refresh dari server
+      await _loadFullConversation();
     } catch (e) {
-      print('❌ Error sending message: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: ${e.toString()}'),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      print('❌ Reply error: $e');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
       setState(() => _isReplying = false);
     }
