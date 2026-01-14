@@ -11,13 +11,17 @@ class UsersPage extends StatefulWidget {
 }
 
 class _UsersPageState extends State<UsersPage> {
-  final Color darkGreen = const Color(0xFF456028);
-  final Color mediumGreen = const Color(0xFF94A65E);
-  final Color lightGreen = const Color(0xFFDDDDA1);
-  final Color creamBackground = const Color(0xFFF8F9FA);
-  final Color accentBlue = const Color(0xFF5A86AD);
-  final Color cardShadow = const Color(0xFFE8F5E9);
-  final Color borderColor = const Color(0xFFE0E0E0);
+  // Modern Color Palette sesuai LoginPage
+  final Color primaryColor = const Color(0xFF4361EE); // Modern blue
+  final Color secondaryColor = const Color(0xFF3A0CA3); // Dark blue
+  final Color accentColor = const Color(0xFF4CC9F0); // Light blue
+  final Color backgroundColor = const Color(0xFFF8F9FF); // Light background
+  final Color surfaceColor = Colors.white;
+  final Color textPrimary = const Color(0xFF2B2D42);
+  final Color textSecondary = const Color(0xFF8D99AE);
+  final Color successColor = const Color(0xFF4CAF50);
+  final Color warningColor = const Color(0xFFFF9800);
+  final Color errorColor = const Color(0xFFF44336);
 
   String? _token;
   List<Map<String, dynamic>> users = [];
@@ -74,12 +78,8 @@ class _UsersPageState extends State<UsersPage> {
           .map((e) => Map<String, dynamic>.from(e))
           .toList();
 
-      users.addAll(newUsers);
-
       setState(() {
-        users.addAll(
-          newUsers.map((e) => Map<String, dynamic>.from(e)).toList(),
-        );
+        users.addAll(newUsers);
         currentPage = nextPage;
         totalPages = data['total_pages'] ?? totalPages;
         isLoading = false;
@@ -93,13 +93,7 @@ class _UsersPageState extends State<UsersPage> {
     _token = await SharedService.getToken();
     if (_token == null) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Session expired. Please login again.'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        _showSnackBar('Session expired. Please login again.', errorColor);
       }
       return;
     }
@@ -144,14 +138,7 @@ class _UsersPageState extends State<UsersPage> {
 
   void _handleError(String message) {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-
+      _showSnackBar(message, errorColor);
       setState(() {
         users = [];
         totalUsers = 0;
@@ -186,32 +173,30 @@ class _UsersPageState extends State<UsersPage> {
           }).toList();
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('User status updated to $newStatus'),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 2),
-          ),
+        _showSnackBar(
+          'User status updated to ${newStatus.toUpperCase()}',
+          successColor,
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              response['message'] ?? 'Failed to update user status',
-            ),
-            backgroundColor: Colors.red,
-          ),
+        _showSnackBar(
+          response['message'] ?? 'Failed to update user status',
+          errorColor,
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      _showSnackBar('Error: ${e.toString()}', errorColor);
     }
+  }
+
+  void _showSnackBar(String message, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
   }
 
   void _showUserDetails(Map<String, dynamic> user) {
@@ -245,7 +230,7 @@ class _UsersPageState extends State<UsersPage> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
+            color: Colors.black.withOpacity(0.15),
             blurRadius: 40,
             spreadRadius: 0,
             offset: const Offset(0, 10),
@@ -263,8 +248,8 @@ class _UsersPageState extends State<UsersPage> {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  isAdmin ? darkGreen : accentBlue,
-                  isAdmin ? mediumGreen : accentBlue.withValues(alpha: 0.8),
+                  isAdmin ? primaryColor : secondaryColor,
+                  isAdmin ? accentColor : secondaryColor.withOpacity(0.8),
                 ],
               ),
               borderRadius: const BorderRadius.only(
@@ -278,7 +263,7 @@ class _UsersPageState extends State<UsersPage> {
                   width: 70,
                   height: 70,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
+                    color: Colors.white.withOpacity(0.2),
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white, width: 2),
                   ),
@@ -307,7 +292,7 @@ class _UsersPageState extends State<UsersPage> {
                         email,
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.white.withValues(alpha: 0.9),
+                          color: Colors.white.withOpacity(0.9),
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -320,7 +305,7 @@ class _UsersPageState extends State<UsersPage> {
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.2),
+                              color: Colors.white.withOpacity(0.2),
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Text(
@@ -340,8 +325,8 @@ class _UsersPageState extends State<UsersPage> {
                             ),
                             decoration: BoxDecoration(
                               color: isActive
-                                  ? Colors.green.withValues(alpha: 0.2)
-                                  : Colors.red.withValues(alpha: 0.2),
+                                  ? Colors.green.withOpacity(0.2)
+                                  : Colors.red.withOpacity(0.2),
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Row(
@@ -408,9 +393,9 @@ class _UsersPageState extends State<UsersPage> {
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: isActive
-                              ? Colors.red.shade50
-                              : Colors.green.shade50,
-                          foregroundColor: isActive ? Colors.red : Colors.green,
+                              ? errorColor.withOpacity(0.1)
+                              : successColor.withOpacity(0.1),
+                          foregroundColor: isActive ? errorColor : successColor,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -440,7 +425,7 @@ class _UsersPageState extends State<UsersPage> {
                       child: OutlinedButton(
                         onPressed: () => Navigator.pop(context),
                         style: OutlinedButton.styleFrom(
-                          side: BorderSide(color: darkGreen, width: 1.5),
+                          side: BorderSide(color: primaryColor, width: 1.5),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -449,12 +434,12 @@ class _UsersPageState extends State<UsersPage> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.close, size: 20, color: darkGreen),
+                            Icon(Icons.close, size: 20, color: primaryColor),
                             const SizedBox(width: 8),
                             Text(
                               'Close',
                               style: TextStyle(
-                                color: darkGreen,
+                                color: primaryColor,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -485,7 +470,7 @@ class _UsersPageState extends State<UsersPage> {
       ),
       child: Row(
         children: [
-          Icon(icon, color: mediumGreen, size: 20),
+          Icon(icon, color: primaryColor, size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -535,227 +520,231 @@ class _UsersPageState extends State<UsersPage> {
   }
 
   Widget _buildUserCard(Map<String, dynamic> user, int index) {
-  final isAdmin = user['role'] == 'admin';
-  final isActive = user['status'] == 'active';
-  final email = user['email'] ?? '';
-  final name = user['name'] ?? 'User ${user['id']}';
-  final joinedDate = user['create_at'] != null
-      ? _formatDate(user['create_at'])
-      : 'N/A';
+    final isAdmin = user['role'] == 'admin';
+    final isActive = user['status'] == 'active';
+    final email = user['email'] ?? '';
+    final name = user['name'] ?? 'User ${user['id']}';
+    final joinedDate = user['create_at'] != null
+        ? _formatDate(user['create_at'])
+        : 'N/A';
 
-  return Container(
-    margin: const EdgeInsets.only(bottom: 16),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(20),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.05),
-          blurRadius: 20,
-          offset: const Offset(0, 5),
-        ),
-      ],
-      border: Border.all(
-        color: isAdmin ? darkGreen.withValues(alpha: 0.2) : borderColor,
-        width: 1.5,
-      ),
-    ),
-    child: Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => _showUserDetails(user),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Row(
-            children: [
-              // Avatar with status indicator
-              Stack(
-                children: [
-                  Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      color: isAdmin
-                          ? darkGreen.withValues(alpha: 0.1)
-                          : accentBlue.withValues(alpha: 0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      isAdmin ? Icons.admin_panel_settings : Icons.person,
-                      color: isAdmin ? darkGreen : accentBlue,
-                      size: 30,
-                    ),
-                  ),
-                  Positioned(
-                    right: 0,
-                    bottom: 0,
-                    child: Container(
-                      width: 16,
-                      height: 16,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 5),
+          ),
+        ],
+        border: Border.all(
+          color: isAdmin ? primaryColor.withOpacity(0.2) : Colors.grey.shade200,
+          width: 1.5,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _showUserDetails(user),
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                // Avatar with status indicator
+                Stack(
+                  children: [
+                    Container(
+                      width: 60,
+                      height: 60,
                       decoration: BoxDecoration(
-                        color: isActive ? Colors.green : Colors.red,
+                        gradient: LinearGradient(
+                          colors: [
+                            primaryColor.withOpacity(0.1),
+                            accentColor.withOpacity(0.1),
+                          ],
+                        ),
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                      child: Icon(
+                        isAdmin ? Icons.admin_panel_settings : Icons.person,
+                        color: isAdmin ? primaryColor : accentColor,
+                        size: 30,
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(width: 16),
-
-              // User Info - EXPANDED untuk mencegah overflow
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Name + Badge Row
-                    Row(
-                      children: [
-                        Flexible( // ← PENTING: Pakai Flexible di sini
-                          child: Text(
-                            name,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: darkGreen,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                          ),
+                    Positioned(
+                      right: 0,
+                      bottom: 0,
+                      child: Container(
+                        width: 16,
+                        height: 16,
+                        decoration: BoxDecoration(
+                          color: isActive ? successColor : errorColor,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
                         ),
-                        if (isAdmin) ...[
-                          const SizedBox(width: 8),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 16),
+
+                // User Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Name + Badge Row
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              name,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: textPrimary,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                          ),
+                          if (isAdmin) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [primaryColor, secondaryColor],
+                                ),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                'ADMIN',
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+
+                      // Email
+                      Text(
+                        email,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade600,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                      const SizedBox(height: 8),
+
+                      // Status + Date Row
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          // Status Badge
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
+                              horizontal: 10,
+                              vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [darkGreen, mediumGreen],
-                              ),
-                              borderRadius: BorderRadius.circular(6),
+                              color: isActive
+                                  ? successColor.withOpacity(0.1)
+                                  : errorColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                            child: Text(
-                              'ADMIN',
-                              style: const TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  isActive ? Icons.circle : Icons.circle_outlined,
+                                  size: 10,
+                                  color: isActive ? successColor : errorColor,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  isActive ? 'Active' : 'Inactive',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: isActive ? successColor : errorColor,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 4),
 
-                    // Email
-                    Text(
-                      email,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey.shade600,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                    ),
-                    const SizedBox(height: 8),
-
-                    // Status + Date Row - WRAP supaya tidak overflow
-                    Wrap( // ← SOLUSI UTAMA: Pakai Wrap
-                      spacing: 8,
-                      runSpacing: 4,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        // Status Badge
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isActive
-                                ? Colors.green.withValues(alpha: 0.1)
-                                : Colors.red.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
+                          // Joined Date
+                          Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
-                                isActive ? Icons.circle : Icons.circle_outlined,
-                                size: 10,
-                                color: isActive ? Colors.green : Colors.red,
+                                Icons.calendar_today,
+                                size: 13,
+                                color: Colors.grey.shade400,
                               ),
-                              const SizedBox(width: 6),
+                              const SizedBox(width: 4),
                               Text(
-                                isActive ? 'Active' : 'Inactive',
+                                joinedDate,
                                 style: TextStyle(
                                   fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: isActive ? Colors.green : Colors.red,
+                                  color: Colors.grey.shade500,
                                 ),
                               ),
                             ],
                           ),
-                        ),
-
-                        // Joined Date
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.calendar_today,
-                              size: 13,
-                              color: Colors.grey.shade400,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              joinedDate,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              // Switch - di luar Expanded
-              Transform.scale(
-                scale: 0.85,
-                child: Switch(
-                  value: isActive,
-                  onChanged: (value) => _toggleUserStatus(
-                    user['id'],
-                    user['status'] ?? 'active',
+                        ],
+                      ),
+                    ],
                   ),
-                  activeThumbColor: Colors.green,
-                  inactiveTrackColor: Colors.grey.shade300,
-                  activeTrackColor: Colors.green.shade200,
-                  thumbColor: WidgetStateProperty.resolveWith<Color>((
-                    Set<WidgetState> states,
-                  ) {
-                    if (states.contains(WidgetState.selected)) {
-                      return Colors.white;
-                    }
-                    return Colors.white;
-                  }),
                 ),
-              ),
-            ],
+
+                // Switch
+                Transform.scale(
+                  scale: 0.85,
+                  child: Switch(
+                    value: isActive,
+                    onChanged: (value) => _toggleUserStatus(
+                      user['id'],
+                      user['status'] ?? 'active',
+                    ),
+                    activeThumbColor: Colors.white,
+                    inactiveThumbColor: Colors.white,
+                    activeTrackColor: successColor.withOpacity(0.5),
+                    inactiveTrackColor: Colors.grey.shade300,
+                    thumbColor: MaterialStateProperty.resolveWith<Color>(
+                      (Set<MaterialState> states) {
+                        if (states.contains(MaterialState.selected)) {
+                          return successColor;
+                        }
+                        return errorColor;
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildSearchBar() {
     return Padding(
@@ -766,7 +755,7 @@ class _UsersPageState extends State<UsersPage> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
+              color: Colors.black.withOpacity(0.06),
               blurRadius: 20,
               offset: const Offset(0, 6),
             ),
@@ -783,7 +772,8 @@ class _UsersPageState extends State<UsersPage> {
           },
           decoration: InputDecoration(
             hintText: 'Search users by name or email...',
-            prefixIcon: Icon(Icons.search, color: mediumGreen, size: 22),
+            hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 15),
+            prefixIcon: Icon(Icons.search, color: primaryColor, size: 22),
             suffixIcon: searchQuery.isNotEmpty
                 ? IconButton(
                     icon: Icon(
@@ -803,9 +793,8 @@ class _UsersPageState extends State<UsersPage> {
               horizontal: 20,
               vertical: 18,
             ),
-            hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 15),
           ),
-          style: TextStyle(color: Colors.grey.shade800, fontSize: 15),
+          style: TextStyle(color: textPrimary, fontSize: 15),
         ),
       ),
     );
@@ -823,14 +812,14 @@ class _UsersPageState extends State<UsersPage> {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              darkGreen.withValues(alpha: 0.08),
-              mediumGreen.withValues(alpha: 0.08),
+              primaryColor.withOpacity(0.08),
+              accentColor.withOpacity(0.08),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: mediumGreen.withValues(alpha: 0.2)),
+          border: Border.all(color: primaryColor.withOpacity(0.2)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -839,25 +828,25 @@ class _UsersPageState extends State<UsersPage> {
               'Total Users',
               totalUsers.toString(),
               Icons.people_outline,
-              darkGreen,
+              primaryColor,
             ),
             _buildStatItem(
               'Active',
               activeCount.toString(),
               Icons.check_circle_outline,
-              Colors.green,
+              successColor,
             ),
             _buildStatItem(
               'Inactive',
               inactiveCount.toString(),
               Icons.pause_circle_outline,
-              Colors.orange,
+              warningColor,
             ),
             _buildStatItem(
               'Admins',
               adminCount.toString(),
               Icons.admin_panel_settings_outlined,
-              accentBlue,
+              secondaryColor,
             ),
           ],
         ),
@@ -876,7 +865,7 @@ class _UsersPageState extends State<UsersPage> {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
+            color: color.withOpacity(0.1),
             shape: BoxShape.circle,
           ),
           child: Icon(icon, color: color, size: 20),
@@ -887,7 +876,7 @@ class _UsersPageState extends State<UsersPage> {
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: darkGreen,
+            color: textPrimary,
           ),
         ),
         const SizedBox(height: 4),
@@ -908,12 +897,12 @@ class _UsersPageState extends State<UsersPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          CircularProgressIndicator(color: darkGreen, strokeWidth: 2),
+          CircularProgressIndicator(color: primaryColor, strokeWidth: 2),
           const SizedBox(height: 20),
           Text(
             'Loading users...',
             style: TextStyle(
-              color: darkGreen,
+              color: textPrimary,
               fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
@@ -969,7 +958,7 @@ class _UsersPageState extends State<UsersPage> {
                   _loadUsers(page: 1);
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: darkGreen,
+                  backgroundColor: primaryColor,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -991,8 +980,8 @@ class _UsersPageState extends State<UsersPage> {
 
   Widget _buildUserList() {
     return RefreshIndicator(
-      color: darkGreen,
-      backgroundColor: creamBackground,
+      color: primaryColor,
+      backgroundColor: backgroundColor,
       displacement: 40,
       onRefresh: () => _loadUsers(page: 1, showLoading: false),
       child: ListView.builder(
@@ -1008,7 +997,9 @@ class _UsersPageState extends State<UsersPage> {
           if (index == users.length && currentPage < totalPages) {
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 20),
-              child: Center(child: CircularProgressIndicator(color: darkGreen)),
+              child: Center(
+                child: CircularProgressIndicator(color: primaryColor),
+              ),
             );
           }
           return _buildUserCard(users[index], index);
@@ -1020,7 +1011,7 @@ class _UsersPageState extends State<UsersPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: creamBackground,
+      backgroundColor: backgroundColor,
       appBar: AppBar(
         title: const Text(
           'User Management',
@@ -1030,7 +1021,7 @@ class _UsersPageState extends State<UsersPage> {
             letterSpacing: 0.5,
           ),
         ),
-        backgroundColor: darkGreen,
+        backgroundColor: primaryColor,
         foregroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
@@ -1058,8 +1049,8 @@ class _UsersPageState extends State<UsersPage> {
         children: [
           if (isRefreshing)
             LinearProgressIndicator(
-              color: mediumGreen,
-              backgroundColor: mediumGreen.withValues(alpha: 0.1),
+              color: primaryColor,
+              backgroundColor: primaryColor.withOpacity(0.1),
               minHeight: 2,
             ),
           _buildSearchBar(),
@@ -1069,15 +1060,14 @@ class _UsersPageState extends State<UsersPage> {
             child: isLoading && users.isEmpty
                 ? _buildLoadingIndicator()
                 : users.isEmpty
-                ? _buildEmptyState()
-                : _buildUserList(),
+                    ? _buildEmptyState()
+                    : _buildUserList(),
           ),
         ],
       ),
     );
   }
 
-  // Versi sederhana langsung di UsersPage
   void _showAddUserDialog() {
     final _formKey = GlobalKey<FormState>();
     final _nameController = TextEditingController();
@@ -1097,7 +1087,7 @@ class _UsersPageState extends State<UsersPage> {
             return AlertDialog(
               title: Row(
                 children: [
-                  Icon(Icons.person_add, color: darkGreen),
+                  Icon(Icons.person_add, color: primaryColor),
                   const SizedBox(width: 12),
                   const Text('Add New User'),
                 ],
@@ -1114,15 +1104,15 @@ class _UsersPageState extends State<UsersPage> {
                           padding: const EdgeInsets.all(12),
                           margin: const EdgeInsets.only(bottom: 16),
                           decoration: BoxDecoration(
-                            color: Colors.red.shade50,
+                            color: errorColor.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.red.shade200),
+                            border: Border.all(color: errorColor.withOpacity(0.3)),
                           ),
                           child: Row(
                             children: [
                               Icon(
                                 Icons.error_outline,
-                                color: Colors.red,
+                                color: errorColor,
                                 size: 16,
                               ),
                               const SizedBox(width: 8),
@@ -1130,7 +1120,7 @@ class _UsersPageState extends State<UsersPage> {
                                 child: Text(
                                   _errorMessage!,
                                   style: TextStyle(
-                                    color: Colors.red.shade700,
+                                    color: errorColor,
                                     fontSize: 14,
                                   ),
                                 ),
@@ -1144,11 +1134,22 @@ class _UsersPageState extends State<UsersPage> {
                         controller: _nameController,
                         decoration: InputDecoration(
                           labelText: 'Full Name',
-                          prefixIcon: Icon(Icons.person, color: mediumGreen),
+                          labelStyle: TextStyle(color: textSecondary),
+                          prefixIcon: Icon(Icons.person, color: primaryColor),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: Colors.grey.shade300),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: Colors.grey.shade300),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: primaryColor),
                           ),
                         ),
+                        style: TextStyle(color: textPrimary),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Please enter name';
@@ -1163,11 +1164,22 @@ class _UsersPageState extends State<UsersPage> {
                         controller: _emailController,
                         decoration: InputDecoration(
                           labelText: 'Email Address',
-                          prefixIcon: Icon(Icons.email, color: mediumGreen),
+                          labelStyle: TextStyle(color: textSecondary),
+                          prefixIcon: Icon(Icons.email, color: primaryColor),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: Colors.grey.shade300),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: Colors.grey.shade300),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: primaryColor),
                           ),
                         ),
+                        style: TextStyle(color: textPrimary),
                         keyboardType: TextInputType.emailAddress,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
@@ -1186,11 +1198,22 @@ class _UsersPageState extends State<UsersPage> {
                         controller: _passwordController,
                         decoration: InputDecoration(
                           labelText: 'Password',
-                          prefixIcon: Icon(Icons.lock, color: mediumGreen),
+                          labelStyle: TextStyle(color: textSecondary),
+                          prefixIcon: Icon(Icons.lock, color: primaryColor),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: Colors.grey.shade300),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: Colors.grey.shade300),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: primaryColor),
                           ),
                         ),
+                        style: TextStyle(color: textPrimary),
                         obscureText: true,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
@@ -1206,14 +1229,25 @@ class _UsersPageState extends State<UsersPage> {
 
                       // Role Dropdown
                       DropdownButtonFormField<String>(
-                        initialValue: _roleController.text,
+                        value: _roleController.text,
                         decoration: InputDecoration(
                           labelText: 'Role',
-                          prefixIcon: Icon(Icons.work, color: mediumGreen),
+                          labelStyle: TextStyle(color: textSecondary),
+                          prefixIcon: Icon(Icons.work, color: primaryColor),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: Colors.grey.shade300),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: Colors.grey.shade300),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: primaryColor),
                           ),
                         ),
+                        style: TextStyle(color: textPrimary),
                         items: ['user', 'admin']
                             .map(
                               (role) => DropdownMenuItem(
@@ -1232,14 +1266,25 @@ class _UsersPageState extends State<UsersPage> {
 
                       // Status Dropdown
                       DropdownButtonFormField<String>(
-                        initialValue: _statusController.text,
+                        value: _statusController.text,
                         decoration: InputDecoration(
                           labelText: 'Status',
-                          prefixIcon: Icon(Icons.toggle_on, color: mediumGreen),
+                          labelStyle: TextStyle(color: textSecondary),
+                          prefixIcon: Icon(Icons.toggle_on, color: primaryColor),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: Colors.grey.shade300),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: Colors.grey.shade300),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: primaryColor),
                           ),
                         ),
+                        style: TextStyle(color: textPrimary),
                         items: ['active', 'inactive']
                             .map(
                               (status) => DropdownMenuItem(
@@ -1261,6 +1306,9 @@ class _UsersPageState extends State<UsersPage> {
               actions: [
                 TextButton(
                   onPressed: _isLoading ? null : () => Navigator.pop(context),
+                  style: TextButton.styleFrom(
+                    foregroundColor: textSecondary,
+                  ),
                   child: const Text('Cancel'),
                 ),
                 ElevatedButton(
@@ -1290,25 +1338,18 @@ class _UsersPageState extends State<UsersPage> {
                               if (response['status'] == true) {
                                 if (mounted) {
                                   Navigator.pop(context);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        response['message'] ??
-                                            'User created successfully',
-                                      ),
-                                      backgroundColor: Colors.green,
-                                      behavior: SnackBarBehavior.floating,
-                                    ),
+                                  _showSnackBar(
+                                    response['message'] ??
+                                        'User created successfully',
+                                    successColor,
                                   );
-
-                                  // Refresh user list
                                   _loadUsers(page: 1);
                                 }
                               } else {
                                 setState(() {
                                   _errorMessage =
                                       response['message'] ??
-                                      'Failed to create user';
+                                          'Failed to create user';
                                   _isLoading = false;
                                 });
                               }
@@ -1320,7 +1361,12 @@ class _UsersPageState extends State<UsersPage> {
                             }
                           }
                         },
-                  style: ElevatedButton.styleFrom(backgroundColor: darkGreen),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryColor,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
                   child: _isLoading
                       ? SizedBox(
                           height: 20,

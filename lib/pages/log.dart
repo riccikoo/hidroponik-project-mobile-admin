@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../services/shared.dart';
+import 'package:intl/intl.dart';
 
 class LogsPage extends StatefulWidget {
   const LogsPage({super.key});
@@ -11,9 +12,18 @@ class LogsPage extends StatefulWidget {
 }
 
 class _LogsPageState extends State<LogsPage> {
-  final Color darkGreen = const Color(0xFF456028);
-  final Color mediumGreen = const Color(0xFF94A65E);
-  final Color creamBackground = const Color(0xFFF8F9FA);
+  // Modern Color Palette
+  final Color primaryColor = const Color(0xFF4361EE); // Modern blue
+  final Color secondaryColor = const Color(0xFF3A0CA3); // Dark blue
+  final Color accentColor = const Color(0xFF4CC9F0); // Light blue
+  final Color successColor = const Color(0xFF06D6A0); // Green
+  final Color warningColor = const Color(0xFFFFD166); // Yellow
+  final Color errorColor = const Color(0xFFEF476F); // Red
+  final Color backgroundColor = const Color(0xFFF8F9FF); // Light background
+  final Color cardColor = Colors.white;
+  final Color textPrimary = const Color(0xFF2B2D42);
+  final Color textSecondary = const Color(0xFF8D99AE);
+  final Color borderColor = const Color(0xFFE9ECEF);
 
   static const String baseUrl =
       'https://uncollapsable-overfly-blaine.ngrok-free.dev/api';
@@ -23,6 +33,7 @@ class _LogsPageState extends State<LogsPage> {
   bool isLoading = true;
   String selectedFilter = 'all'; // all, info, warning, error
   DateTime? selectedDate;
+  String searchQuery = '';
 
   @override
   void initState() {
@@ -139,6 +150,26 @@ class _LogsPageState extends State<LogsPage> {
           'source': 'ultrasonic',
           'details': 'Water level: 15%',
         },
+        {
+          'id': 8,
+          'level': 'ERROR',
+          'message': 'Sensor calibration failed',
+          'timestamp': DateTime.now()
+              .subtract(const Duration(hours: 4))
+              .toIso8601String(),
+          'source': 'sensor',
+          'details': 'PH sensor requires recalibration',
+        },
+        {
+          'id': 9,
+          'level': 'INFO',
+          'message': 'System maintenance completed',
+          'timestamp': DateTime.now()
+              .subtract(const Duration(hours: 5))
+              .toIso8601String(),
+          'source': 'system',
+          'details': 'All systems running optimally',
+        },
       ];
       isLoading = false;
     });
@@ -164,32 +195,53 @@ class _LogsPageState extends State<LogsPage> {
       }).toList();
     }
 
+    if (searchQuery.isNotEmpty) {
+      filtered = filtered.where((log) {
+        return log['message'].toString().toLowerCase().contains(
+              searchQuery.toLowerCase(),
+            ) ||
+            log['source'].toString().toLowerCase().contains(
+                  searchQuery.toLowerCase(),
+                ) ||
+            log['level'].toString().toLowerCase().contains(
+                  searchQuery.toLowerCase(),
+                );
+      }).toList();
+    }
+
+    // Sort by timestamp (newest first)
+    filtered.sort((a, b) {
+      return DateTime.parse(b['timestamp']).compareTo(
+        DateTime.parse(a['timestamp']),
+      );
+    });
+
     return filtered;
   }
 
   Color _getLevelColor(String level) {
     switch (level.toUpperCase()) {
       case 'ERROR':
-        return Colors.red;
+        return errorColor;
       case 'WARNING':
-        return Colors.orange;
+        return warningColor;
       case 'INFO':
-        return Colors.blue;
+        return primaryColor;
       default:
-        return Colors.grey;
+        return textSecondary;
     }
   }
 
   IconData _getLevelIcon(String level) {
     switch (level.toUpperCase()) {
       case 'ERROR':
-        return Icons.error;
+        return Icons.error_outline_rounded;
       case 'WARNING':
-        return Icons.warning;
+        return Icons.warning_amber_rounded;
       case 'INFO':
-        return Icons.info;
+        return Icons.info_outline_rounded;
       default:
-        return Icons.circle;
+        return Icons.circle_outlined;
     }
   }
 
@@ -206,7 +258,7 @@ class _LogsPageState extends State<LogsPage> {
       } else if (difference.inHours < 24) {
         return '${difference.inHours}h ago';
       } else {
-        return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+        return DateFormat('MMM dd, HH:mm').format(date);
       }
     } catch (e) {
       return timestamp;
@@ -217,14 +269,32 @@ class _LogsPageState extends State<LogsPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: cardColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
         title: Row(
           children: [
-            Icon(
-              _getLevelIcon(log['level']),
-              color: _getLevelColor(log['level']),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: _getLevelColor(log['level']).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                _getLevelIcon(log['level']),
+                color: _getLevelColor(log['level']),
+                size: 24,
+              ),
             ),
-            const SizedBox(width: 8),
-            Text('Log Details'),
+            const SizedBox(width: 12),
+            Text(
+              'Log Details',
+              style: TextStyle(
+                color: textPrimary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ],
         ),
         content: SingleChildScrollView(
@@ -238,15 +308,29 @@ class _LogsPageState extends State<LogsPage> {
               if (log['source'] != null) _detailRow('Source', log['source']),
               if (log['user'] != null) _detailRow('User', log['user']),
               if (log['details'] != null) ...[
-                const SizedBox(height: 8),
-                const Text(
-                  'Details:',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 12),
                 Text(
-                  log['details'],
-                  style: const TextStyle(color: Colors.grey),
+                  'Details',
+                  style: TextStyle(
+                    color: textPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: backgroundColor,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    log['details'],
+                    style: TextStyle(
+                      color: textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
                 ),
               ],
             ],
@@ -255,6 +339,9 @@ class _LogsPageState extends State<LogsPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
+            style: TextButton.styleFrom(
+              foregroundColor: textSecondary,
+            ),
             child: const Text('Close'),
           ),
         ],
@@ -264,7 +351,7 @@ class _LogsPageState extends State<LogsPage> {
 
   Widget _detailRow(String label, String value, [Color? valueColor]) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -272,14 +359,22 @@ class _LogsPageState extends State<LogsPage> {
             width: 80,
             child: Text(
               '$label:',
-              style: TextStyle(fontWeight: FontWeight.w600, color: darkGreen),
+              style: TextStyle(
+                color: textSecondary,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
               value,
-              style: TextStyle(color: valueColor ?? Colors.grey),
+              style: TextStyle(
+                color: valueColor ?? textPrimary,
+                fontWeight: FontWeight.w500,
+                fontSize: 13,
+              ),
             ),
           ),
         ],
@@ -291,8 +386,19 @@ class _LogsPageState extends State<LogsPage> {
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
-      firstDate: DateTime.now().subtract(const Duration(days: 30)),
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
       lastDate: DateTime.now(),
+      builder: (context, child) {
+        return Theme(
+          data: ThemeData.light().copyWith(
+            colorScheme: ColorScheme.light(
+              primary: primaryColor,
+              onPrimary: Colors.white,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
 
     if (picked != null) {
@@ -304,7 +410,25 @@ class _LogsPageState extends State<LogsPage> {
     setState(() {
       selectedFilter = 'all';
       selectedDate = null;
+      searchQuery = '';
     });
+  }
+
+  void _exportLogs() {
+    // TODO: Implement export functionality
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Export functionality coming soon',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
+        backgroundColor: primaryColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+    );
   }
 
   @override
@@ -317,18 +441,79 @@ class _LogsPageState extends State<LogsPage> {
     };
 
     return Scaffold(
-      backgroundColor: creamBackground,
+      backgroundColor: backgroundColor,
       appBar: AppBar(
-        title: const Text('Activity Logs'),
-        backgroundColor: darkGreen,
-        foregroundColor: Colors.white,
+        title: Text(
+          'Activity Logs',
+          style: TextStyle(
+            color: textPrimary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        backgroundColor: cardColor,
         elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios_rounded, color: textPrimary),
+          onPressed: () => Navigator.pop(context),
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.download_rounded, color: primaryColor),
+            onPressed: _exportLogs,
+            tooltip: 'Export logs',
+          ),
+          IconButton(
+            icon: Icon(Icons.refresh_rounded, color: primaryColor),
+            onPressed: _loadLogs,
+            tooltip: 'Refresh logs',
+          ),
+        ],
       ),
       body: Column(
         children: [
-          // Filters
-          Padding(
-            padding: const EdgeInsets.all(16),
+          // Search Bar
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            color: cardColor,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: backgroundColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: borderColor),
+              ),
+              child: TextField(
+                onChanged: (value) {
+                  setState(() => searchQuery = value);
+                },
+                decoration: InputDecoration(
+                  hintText: 'Search logs...',
+                  hintStyle: TextStyle(color: textSecondary),
+                  border: InputBorder.none,
+                  icon: Icon(Icons.search_rounded, color: textSecondary),
+                  suffixIcon: searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: Icon(Icons.close_rounded, color: textSecondary),
+                          onPressed: () {
+                            setState(() => searchQuery = '');
+                          },
+                        )
+                      : null,
+                ),
+                style: TextStyle(color: textPrimary),
+              ),
+            ),
+          ),
+
+          // Filters Section
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            decoration: BoxDecoration(
+              color: cardColor,
+              border: Border(
+                bottom: BorderSide(color: borderColor),
+              ),
+            ),
             child: Column(
               children: [
                 // Level Filters
@@ -358,43 +543,47 @@ class _LogsPageState extends State<LogsPage> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 16,
-                            vertical: 12,
+                            vertical: 14,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.grey.shade300),
+                            color: backgroundColor,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: borderColor),
                           ),
                           child: Row(
                             children: [
                               Icon(
-                                Icons.calendar_today,
-                                color: mediumGreen,
+                                Icons.calendar_today_rounded,
+                                color: primaryColor,
                                 size: 20,
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: 12),
                               Text(
                                 selectedDate != null
-                                    ? '${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}'
-                                    : 'Select date',
+                                    ? DateFormat('MMM dd, yyyy').format(selectedDate!)
+                                    : 'Filter by date',
                                 style: TextStyle(
                                   color: selectedDate != null
-                                      ? darkGreen
-                                      : Colors.grey.shade600,
+                                      ? textPrimary
+                                      : textSecondary,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
+                              const Spacer(),
                               if (selectedDate != null)
-                                Expanded(
-                                  child: Align(
-                                    alignment: Alignment.centerRight,
-                                    child: IconButton(
-                                      icon: Icon(
-                                        Icons.close,
-                                        size: 16,
-                                        color: Colors.grey.shade500,
-                                      ),
-                                      onPressed: () =>
-                                          setState(() => selectedDate = null),
+                                GestureDetector(
+                                  onTap: () =>
+                                      setState(() => selectedDate = null),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: errorColor.withOpacity(0.1),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      Icons.close_rounded,
+                                      size: 16,
+                                      color: errorColor,
                                     ),
                                   ),
                                 ),
@@ -403,11 +592,18 @@ class _LogsPageState extends State<LogsPage> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    if (selectedFilter != 'all' || selectedDate != null)
-                      TextButton(
-                        onPressed: _clearFilters,
-                        child: const Text('Clear'),
+                    const SizedBox(width: 12),
+                    if (selectedFilter != 'all' || selectedDate != null || searchQuery.isNotEmpty)
+                      Container(
+                        decoration: BoxDecoration(
+                          color: errorColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: IconButton(
+                          icon: Icon(Icons.clear_all_rounded, color: errorColor),
+                          onPressed: _clearFilters,
+                          tooltip: 'Clear all filters',
+                        ),
                       ),
                   ],
                 ),
@@ -415,28 +611,22 @@ class _LogsPageState extends State<LogsPage> {
             ),
           ),
 
-          // Stats
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    darkGreen.withValues(alpha: 0.1),
-                    mediumGreen.withValues(alpha: 0.1),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+          // Stats Cards
+          Container(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _statCard(
+                    'Total Logs',
+                    logs.length.toString(),
+                    Icons.list_alt_rounded,
+                    primaryColor,
+                  ),
                 ),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: mediumGreen.withValues(alpha: 0.2)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _logStat('Total Logs', logs.length, Icons.list),
-                  _logStat(
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _statCard(
                     'Today',
                     logs.where((log) {
                       final logDate = DateTime.parse(log['timestamp']);
@@ -444,181 +634,239 @@ class _LogsPageState extends State<LogsPage> {
                       return logDate.year == today.year &&
                           logDate.month == today.month &&
                           logDate.day == today.day;
-                    }).length,
-                    Icons.today,
+                    }).length.toString(),
+                    Icons.today_rounded,
+                    accentColor,
                   ),
-                  _logStat(
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _statCard(
                     'Errors',
-                    levelCounts['error']!,
-                    Icons.error,
-                    Colors.red,
+                    levelCounts['error']!.toString(),
+                    Icons.error_outline_rounded,
+                    errorColor,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
 
           // Logs List
           Expanded(
             child: isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : filteredLogs.isEmpty
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
-                          Icons.history,
-                          size: 64,
-                          color: Colors.grey.shade400,
-                        ),
+                        CircularProgressIndicator(color: primaryColor),
                         const SizedBox(height: 16),
                         Text(
-                          'No logs found',
+                          'Loading activity logs...',
                           style: TextStyle(
-                            fontSize: 18,
-                            color: Colors.grey.shade600,
+                            color: textSecondary,
+                            fontSize: 16,
                           ),
                         ),
-                        if (selectedFilter != 'all' || selectedDate != null)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: TextButton(
-                              onPressed: _clearFilters,
-                              child: const Text('Clear filters'),
-                            ),
-                          ),
                       ],
                     ),
                   )
-                : RefreshIndicator(
-                    onRefresh: _loadLogs,
-                    child: ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: filteredLogs.length,
-                      itemBuilder: (context, index) {
-                        final log = filteredLogs[index];
-                        final levelColor = _getLevelColor(log['level']);
-
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.05),
-                                blurRadius: 10,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                            border: Border.all(
-                              color: levelColor.withValues(alpha: 0.2),
+                : filteredLogs.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.history_toggle_off_rounded,
+                              size: 80,
+                              color: textSecondary.withOpacity(0.5),
                             ),
-                          ),
-                          child: ListTile(
-                            leading: Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: levelColor.withValues(alpha: 0.1),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                _getLevelIcon(log['level']),
-                                color: levelColor,
-                                size: 20,
-                              ),
-                            ),
-                            title: Text(
-                              log['message'],
+                            const SizedBox(height: 16),
+                            Text(
+                              'No logs found',
                               style: TextStyle(
-                                fontWeight: FontWeight.w500,
-                                color: darkGreen,
+                                fontSize: 18,
+                                color: textPrimary,
+                                fontWeight: FontWeight.w700,
                               ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
                             ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: levelColor.withValues(
-                                          alpha: 0.1,
-                                        ),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        log['level'],
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color: levelColor,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Try adjusting your filters or search',
+                              style: TextStyle(
+                                color: textSecondary,
+                              ),
+                            ),
+                            if (selectedFilter != 'all' ||
+                                selectedDate != null ||
+                                searchQuery.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 16),
+                                child: ElevatedButton(
+                                  onPressed: _clearFilters,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: primaryColor,
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
                                     ),
-                                    if (log['source'] != null) ...[
-                                      const SizedBox(width: 4),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                          vertical: 2,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: mediumGreen.withValues(
-                                            alpha: 0.1,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            4,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          log['source'],
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            color: mediumGreen,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
+                                  ),
+                                  child: const Text('Clear all filters'),
+                                ),
+                              ),
+                          ],
+                        ),
+                      )
+                    : RefreshIndicator(
+                        onRefresh: _loadLogs,
+                        color: primaryColor,
+                        child: ListView.separated(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: filteredLogs.length,
+                          separatorBuilder: (context, index) =>
+                              const SizedBox(height: 12),
+                          itemBuilder: (context, index) {
+                            final log = filteredLogs[index];
+                            final levelColor = _getLevelColor(log['level']);
+
+                            return Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () => _showLogDetails(log),
+                                borderRadius: BorderRadius.circular(16),
+                                child: Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: cardColor,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(color: borderColor),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.03),
+                                        blurRadius: 20,
+                                        offset: const Offset(0, 4),
                                       ),
                                     ],
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  _formatDateTime(log['timestamp']),
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey.shade600,
+                                  ),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Container(
+                                        width: 40,
+                                        height: 40,
+                                        decoration: BoxDecoration(
+                                          color: levelColor.withOpacity(0.1),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                        ),
+                                        child: Center(
+                                          child: Icon(
+                                            _getLevelIcon(log['level']),
+                                            color: levelColor,
+                                            size: 20,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              log['message'],
+                                              style: TextStyle(
+                                                color: textPrimary,
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 14,
+                                              ),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Row(
+                                              children: [
+                                                Container(
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                    horizontal: 8,
+                                                    vertical: 4,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color:
+                                                        levelColor.withOpacity(
+                                                            0.1),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            6),
+                                                  ),
+                                                  child: Text(
+                                                    log['level'],
+                                                    style: TextStyle(
+                                                      fontSize: 11,
+                                                      color: levelColor,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                    ),
+                                                  ),
+                                                ),
+                                                if (log['source'] != null) ...[
+                                                  const SizedBox(width: 8),
+                                                  Container(
+                                                    padding: const EdgeInsets
+                                                        .symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 4,
+                                                    ),
+                                                    decoration: BoxDecoration(
+                                                      color: primaryColor
+                                                          .withOpacity(0.1),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              6),
+                                                    ),
+                                                    child: Text(
+                                                      log['source'],
+                                                      style: TextStyle(
+                                                        fontSize: 11,
+                                                        color: primaryColor,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                                const Spacer(),
+                                                Text(
+                                                  _formatDateTime(
+                                                      log['timestamp']),
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: textSecondary,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Icon(
+                                        Icons.chevron_right_rounded,
+                                        color: textSecondary,
+                                      ),
+                                    ],
                                   ),
                                 ),
-                              ],
-                            ),
-                            trailing: Icon(
-                              Icons.chevron_right,
-                              color: mediumGreen,
-                            ),
-                            onTap: () => _showLogDetails(log),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _loadLogs,
-        backgroundColor: darkGreen,
-        child: const Icon(Icons.refresh, color: Colors.white),
       ),
     );
   }
@@ -628,26 +876,31 @@ class _LogsPageState extends State<LogsPage> {
 
     return Padding(
       padding: const EdgeInsets.only(right: 8),
-      child: FilterChip(
+      child: ChoiceChip(
         label: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(label),
-            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(width: 6),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? Colors.white.withValues(alpha: 0.2)
-                    : darkGreen.withValues(alpha: 0.1),
+                    ? Colors.white.withOpacity(0.2)
+                    : primaryColor.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
                 count.toString(),
                 style: TextStyle(
-                  fontSize: 12,
-                  color: isSelected ? Colors.white : darkGreen,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: isSelected ? Colors.white : primaryColor,
                 ),
               ),
             ),
@@ -657,45 +910,75 @@ class _LogsPageState extends State<LogsPage> {
         onSelected: (selected) {
           setState(() => selectedFilter = value);
         },
-        backgroundColor: Colors.white,
-        selectedColor: darkGreen,
-        checkmarkColor: Colors.white,
-        labelStyle: TextStyle(color: isSelected ? Colors.white : darkGreen),
+        backgroundColor: backgroundColor,
+        selectedColor: primaryColor,
+        labelStyle: TextStyle(
+          color: isSelected ? Colors.white : textPrimary,
+        ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
           side: BorderSide(
-            color: isSelected ? darkGreen : Colors.grey.shade300,
+            color: isSelected ? primaryColor : borderColor,
           ),
         ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       ),
     );
   }
 
-  Widget _logStat(String label, int count, IconData icon, [Color? iconColor]) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: (iconColor ?? darkGreen).withValues(alpha: 0.1),
-            shape: BoxShape.circle,
+  Widget _statCard(String label, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
           ),
-          child: Icon(icon, color: iconColor ?? darkGreen, size: 20),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          count.toString(),
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w800,
-            color: darkGreen,
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Center(
+              child: Icon(
+                icon,
+                color: color,
+                size: 20,
+              ),
+            ),
           ),
-        ),
-        Text(
-          label,
-          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-        ),
-      ],
+          const SizedBox(height: 12),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              color: textPrimary,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              color: textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

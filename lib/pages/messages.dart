@@ -3,6 +3,7 @@ import '../services/shared.dart';
 import '../services/api.dart';
 import '../models/chatthread.dart';
 import 'chat_room_detail.dart';
+import 'package:intl/intl.dart';
 
 class MessagesPage extends StatefulWidget {
   const MessagesPage({super.key});
@@ -12,12 +13,18 @@ class MessagesPage extends StatefulWidget {
 }
 
 class _MessagesPageState extends State<MessagesPage> {
-  // Color theme - Green theme konsisten
-  final Color primaryGreen = const Color(0xFF2E7D32);
-  final Color lightGreen = const Color(0xFF81C784);
-  final Color accentGreen = const Color(0xFF4CAF50);
-  final Color darkGreen = const Color(0xFF1B5E20);
-  final Color backgroundGreen = const Color(0xFFE8F5E9);
+  // Modern Color Palette
+  final Color primaryColor = const Color(0xFF4361EE); // Modern blue
+  final Color secondaryColor = const Color(0xFF3A0CA3); // Dark blue
+  final Color accentColor = const Color(0xFF4CC9F0); // Light blue
+  final Color successColor = const Color(0xFF06D6A0); // Green
+  final Color errorColor = const Color(0xFFEF476F); // Red
+  final Color warningColor = const Color(0xFFFFD166); // Yellow
+  final Color backgroundColor = const Color(0xFFF8F9FF); // Light background
+  final Color cardColor = Colors.white;
+  final Color textPrimary = const Color(0xFF2B2D42);
+  final Color textSecondary = const Color(0xFF8D99AE);
+  final Color borderColor = const Color(0xFFE9ECEF);
 
   // State
   bool _isLoading = true;
@@ -31,6 +38,7 @@ class _MessagesPageState extends State<MessagesPage> {
 
   // Filter
   String _filter = 'all'; // 'all', 'unread', 'replied'
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -47,10 +55,8 @@ class _MessagesPageState extends State<MessagesPage> {
         throw Exception('Please login again');
       }
 
-      // Gunakan endpoint baru getAllThreads
       final threads = await ApiService.getAllThreads(_token!);
 
-      // Hitung total unread
       final totalUnread = threads.fold(
         0,
         (sum, thread) => sum + thread.unreadCount,
@@ -80,13 +86,11 @@ class _MessagesPageState extends State<MessagesPage> {
     try {
       if (_token == null) return;
 
-      // Update local state
       setState(() {
         thread.unreadCount = 0;
         _totalUnread = _threads.fold(0, (sum, t) => sum + t.unreadCount);
       });
 
-      // Mark all messages in this thread as read
       for (var msg in thread.messages.where((m) => !m.isAdmin && !m.isRead)) {
         if (msg.id != null) {
           await ApiService.markAdminMessageAsRead(_token!, msg.id!);
@@ -97,17 +101,17 @@ class _MessagesPageState extends State<MessagesPage> {
         SnackBar(
           content: Row(
             children: [
-              Icon(Icons.check_circle, color: Colors.white, size: 20),
-              SizedBox(width: 8),
-              Text('Marked as read'),
+              Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              const Text('Marked as read'),
             ],
           ),
-          backgroundColor: primaryGreen,
+          backgroundColor: successColor,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(12),
           ),
-          duration: Duration(seconds: 2),
+          duration: const Duration(seconds: 2),
         ),
       );
     } catch (e) {
@@ -116,197 +120,304 @@ class _MessagesPageState extends State<MessagesPage> {
   }
 
   List<ChatThread> get _filteredThreads {
-    // Sort by last message time (newest first)
-    final sortedThreads = List<ChatThread>.from(_threads)
-      ..sort((a, b) => b.lastMessageTime.compareTo(a.lastMessageTime));
+    List<ChatThread> filtered = List.from(_threads);
 
-    return sortedThreads.where((thread) {
-      switch (_filter) {
-        case 'unread':
-          return thread.unreadCount > 0;
-        case 'replied':
-          return thread.messages.any((m) => m.isAdmin);
-        default:
-          return true;
-      }
-    }).toList();
+    // Apply search filter
+    if (_searchQuery.isNotEmpty) {
+      filtered = filtered.where((thread) {
+        return thread.senderName
+                .toLowerCase()
+                .contains(_searchQuery.toLowerCase()) ||
+            thread.senderEmail
+                .toLowerCase()
+                .contains(_searchQuery.toLowerCase());
+      }).toList();
+    }
+
+    // Apply type filter
+    switch (_filter) {
+      case 'unread':
+        filtered = filtered.where((thread) => thread.unreadCount > 0).toList();
+        break;
+      case 'replied':
+        filtered =
+            filtered.where((thread) => thread.messages.any((m) => m.isAdmin)).toList();
+        break;
+    }
+
+    // Sort by last message time (newest first)
+    filtered.sort((a, b) => b.lastMessageTime.compareTo(a.lastMessageTime));
+
+    return filtered;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundGreen,
+      backgroundColor: backgroundColor,
       appBar: AppBar(
-        title: Row(
-          children: [
-            Icon(Icons.forum, color: Colors.white, size: 24),
-            SizedBox(width: 10),
-            Text(
-              'Conversations',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: 18,
+        title: Text(
+          'Messages',
+          style: TextStyle(
+            color: textPrimary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        backgroundColor: cardColor,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios_rounded, color: textPrimary),
+          onPressed: () => Navigator.pop(context),
+        ),
+        actions: [
+          if (_totalUnread > 0)
+            Container(
+              margin: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                color: errorColor,
+                shape: BoxShape.circle,
+                border: Border.all(color: cardColor, width: 2),
               ),
-            ),
-            if (_totalUnread > 0) ...[
-              SizedBox(width: 10),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.red,
-                  borderRadius: BorderRadius.circular(12),
-                ),
+              constraints: const BoxConstraints(
+                minWidth: 20,
+                minHeight: 20,
+              ),
+              child: Center(
                 child: Text(
-                  '$_totalUnread',
-                  style: TextStyle(
+                  _totalUnread > 9 ? '9+' : _totalUnread.toString(),
+                  style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 12,
+                    fontSize: 10,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
-            ],
-          ],
-        ),
-        backgroundColor: primaryGreen,
-        iconTheme: IconThemeData(color: Colors.white),
-        elevation: 2,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(bottom: Radius.circular(15)),
-        ),
-        actions: _buildAppBarActions(),
+            ),
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: primaryColor.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              icon: Icon(Icons.refresh_rounded, color: primaryColor),
+              onPressed: _loadThreads,
+              tooltip: 'Refresh',
+            ),
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
-      body: _buildBody(),
+      body: Column(
+        children: [
+          // Search Bar
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            color: cardColor,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: backgroundColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: borderColor),
+              ),
+              child: TextField(
+                onChanged: (value) {
+                  setState(() => _searchQuery = value);
+                },
+                decoration: InputDecoration(
+                  hintText: 'Search conversations...',
+                  hintStyle: TextStyle(color: textSecondary),
+                  border: InputBorder.none,
+                  icon: Icon(Icons.search_rounded, color: textSecondary),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: Icon(Icons.close_rounded, color: textSecondary),
+                          onPressed: () {
+                            setState(() => _searchQuery = '');
+                          },
+                        )
+                      : null,
+                ),
+                style: TextStyle(color: textPrimary),
+              ),
+            ),
+          ),
+
+          // Filter Chips
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            decoration: BoxDecoration(
+              color: cardColor,
+              border: Border(
+                bottom: BorderSide(color: borderColor),
+              ),
+            ),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _filterChip('All', 'all'),
+                  _filterChip('Unread', 'unread'),
+                  _filterChip('Replied', 'replied'),
+                ],
+              ),
+            ),
+          ),
+
+          // Stats Card
+          Container(
+            padding: const EdgeInsets.all(16),
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: borderColor),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.03),
+                    blurRadius: 20,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: primaryColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                      child: Icon(
+                        Icons.forum_rounded,
+                        color: primaryColor,
+                        size: 24,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Conversations',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: textSecondary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${_threads.length} total • $_totalUnread unread',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: textPrimary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _totalUnread > 0
+                          ? errorColor.withOpacity(0.1)
+                          : successColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          _totalUnread > 0
+                              ? Icons.notifications_active_rounded
+                              : Icons.notifications_off_rounded,
+                          size: 14,
+                          color: _totalUnread > 0 ? errorColor : successColor,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          _totalUnread > 0 ? '$_totalUnread new' : 'All read',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: _totalUnread > 0 ? errorColor : successColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Main Content
+          Expanded(
+            child: _buildContent(),
+          ),
+        ],
+      ),
     );
   }
 
-  List<Widget> _buildAppBarActions() {
-    return [
-      // Filter button
-      Container(
-        margin: EdgeInsets.only(right: 8),
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white.withOpacity(0.2),
+  Widget _filterChip(String label, String value) {
+    final isSelected = _filter == value;
+
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ChoiceChip(
+        label: Text(
+          label,
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+          ),
         ),
-        child: PopupMenuButton<String>(
-          onSelected: (value) => setState(() => _filter = value),
-          itemBuilder: (context) => [
-            PopupMenuItem(
-              value: 'all',
-              child: Row(
-                children: [
-                  Icon(Icons.all_inbox, color: darkGreen, size: 22),
-                  SizedBox(width: 10),
-                  Text(
-                    'All Conversations',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w500,
-                      color: darkGreen,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            PopupMenuItem(
-              value: 'unread',
-              child: Row(
-                children: [
-                  Icon(Icons.mark_email_unread, color: Colors.blue, size: 22),
-                  SizedBox(width: 10),
-                  Text(
-                    'Unread',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w500,
-                      color: Colors.blue.shade700,
-                    ),
-                  ),
-                  if (_totalUnread > 0) ...[
-                    SizedBox(width: 10),
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.blue,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '$_totalUnread',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            PopupMenuItem(
-              value: 'replied',
-              child: Row(
-                children: [
-                  Icon(Icons.reply, color: Colors.green, size: 22),
-                  SizedBox(width: 10),
-                  Text(
-                    'Replied',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w500,
-                      color: Colors.green.shade700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-          icon: Icon(Icons.filter_list, color: Colors.white, size: 24),
+        selected: isSelected,
+        onSelected: (selected) {
+          setState(() => _filter = value);
+        },
+        backgroundColor: backgroundColor,
+        selectedColor: primaryColor,
+        labelStyle: TextStyle(
+          color: isSelected ? Colors.white : textPrimary,
         ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(
+            color: isSelected ? primaryColor : borderColor,
+          ),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       ),
-      // Refresh button
-      Container(
-        margin: EdgeInsets.only(right: 12),
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white.withOpacity(0.2),
-        ),
-        child: IconButton(
-          icon: Icon(Icons.refresh, size: 24),
-          onPressed: _loadThreads,
-          tooltip: 'Refresh',
-          color: Colors.white,
-        ),
-      ),
-    ];
+    );
   }
 
-  Widget _buildBody() {
+  Widget _buildContent() {
     if (_isLoading) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SizedBox(
-              width: 50,
-              height: 50,
-              child: CircularProgressIndicator(
-                strokeWidth: 3,
-                valueColor: AlwaysStoppedAnimation<Color>(primaryGreen),
-              ),
-            ),
-            SizedBox(height: 20),
+            CircularProgressIndicator(color: primaryColor),
+            const SizedBox(height: 16),
             Text(
               'Loading conversations...',
               style: TextStyle(
-                color: darkGreen.withOpacity(0.7),
+                color: textSecondary,
                 fontSize: 16,
-                fontWeight: FontWeight.w500,
               ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Please wait a moment',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
             ),
           ],
         ),
@@ -315,59 +426,67 @@ class _MessagesPageState extends State<MessagesPage> {
 
     if (_hasError) {
       return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(30),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 10,
-                      spreadRadius: 2,
-                    ),
-                  ],
-                ),
-                child: Icon(Icons.error_outline, size: 40, color: Colors.red),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                color: cardColor,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 20,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-              SizedBox(height: 20),
-              Text(
-                'Connection Error',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.red,
-                ),
+              child: Icon(
+                Icons.error_outline_rounded,
+                size: 48,
+                color: errorColor,
               ),
-              SizedBox(height: 10),
-              Text(
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Connection Error',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Text(
                 _errorMessage ?? 'Unable to load conversations',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 15),
-              ),
-              SizedBox(height: 25),
-              ElevatedButton.icon(
-                onPressed: _loadThreads,
-                icon: Icon(Icons.refresh, size: 20),
-                label: Text('Try Again', style: TextStyle(fontSize: 15)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryGreen,
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(horizontal: 25, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 2,
+                style: TextStyle(
+                  color: textSecondary,
+                  fontSize: 14,
                 ),
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: _loadThreads,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text('Try Again'),
+            ),
+          ],
         ),
       );
     }
@@ -387,57 +506,71 @@ class _MessagesPageState extends State<MessagesPage> {
               width: 120,
               height: 120,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: cardColor,
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.05),
-                    blurRadius: 15,
-                    spreadRadius: 3,
+                    blurRadius: 20,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
               child: Icon(
                 _filter == 'unread'
-                    ? Icons.mark_email_unread_outlined
+                    ? Icons.mark_email_unread_rounded
                     : _filter == 'replied'
-                    ? Icons.reply_outlined
-                    : Icons.forum_outlined,
-                size: 50,
-                color: lightGreen,
+                        ? Icons.reply_rounded
+                        : Icons.forum_outlined,
+                size: 48,
+                color: primaryColor,
               ),
             ),
-            SizedBox(height: 25),
+            const SizedBox(height: 24),
             Text(
               _filter == 'all'
                   ? 'No conversations yet'
                   : _filter == 'unread'
-                  ? 'No unread conversations'
-                  : 'No replied conversations',
+                      ? 'No unread conversations'
+                      : 'No replied conversations',
               style: TextStyle(
                 fontSize: 20,
-                color: darkGreen,
-                fontWeight: FontWeight.w600,
+                color: textPrimary,
+                fontWeight: FontWeight.w700,
               ),
             ),
-            SizedBox(height: 10),
+            const SizedBox(height: 8),
             Text(
-              'Messages from users will appear here',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 15),
+              _searchQuery.isNotEmpty
+                  ? 'Try a different search term'
+                  : 'Messages from users will appear here',
+              style: TextStyle(
+                color: textSecondary,
+                fontSize: 14,
+              ),
             ),
-            SizedBox(height: 25),
-            if (_filter != 'all')
-              ElevatedButton.icon(
-                onPressed: () => setState(() => _filter = 'all'),
-                icon: Icon(Icons.all_inbox, size: 18),
-                label: Text('View All Conversations'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryGreen,
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+            if (_filter != 'all' || _searchQuery.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 24),
+                child: ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _filter = 'all';
+                      _searchQuery = '';
+                    });
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
+                  child: const Text('View All Conversations'),
                 ),
               ),
           ],
@@ -447,15 +580,14 @@ class _MessagesPageState extends State<MessagesPage> {
 
     return RefreshIndicator(
       onRefresh: _loadThreads,
-      color: primaryGreen,
-      displacement: 40,
+      color: primaryColor,
       child: ListView.separated(
-        padding: EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
         itemCount: threads.length,
-        separatorBuilder: (context, index) => SizedBox(height: 8),
+        separatorBuilder: (context, index) => const SizedBox(height: 12),
         itemBuilder: (context, index) {
           final thread = threads[index];
-          return _buildThreadCard(thread); // Panggil method yang benar
+          return _buildThreadCard(thread);
         },
       ),
     );
@@ -463,84 +595,88 @@ class _MessagesPageState extends State<MessagesPage> {
 
   Widget _buildThreadCard(ChatThread thread) {
     final hasUnread = thread.unreadCount > 0;
-    final hasReplied = thread.messages.any((m) => m.isAdmin); // ✅ Di sini
-    final lastMessage = thread.messages.isNotEmpty
-        ? thread.messages.last
-        : null;
-    final messageContent =
-        lastMessage?.message ?? 'No messages yet'; // ✅ Di sini
+    final hasReplied = thread.messages.any((m) => m.isAdmin);
+    final lastMessage = thread.messages.isNotEmpty ? thread.messages.last : null;
+    final messageContent = lastMessage?.message ?? 'No messages yet';
+    final isAdminReply = lastMessage?.isAdmin == true;
 
-    return Card(
-      margin: EdgeInsets.symmetric(horizontal: 4),
-      elevation: hasUnread ? 4 : 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+    return Material(
+      color: Colors.transparent,
       child: InkWell(
         onTap: () async {
           if (_token != null) {
-            final result = await Navigator.push(
+            await Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) =>
-                    ChatRoomDetailPage(thread: thread, token: _token!),
+                builder: (context) => ChatRoomDetailPage(
+                  thread: thread,
+                  token: _token!,
+                ),
               ),
             );
-
-            // Refresh if needed
-            if (result == true) {
-              await _loadThreads();
-            }
+            await _loadThreads();
           }
         },
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(16),
         child: Container(
-          padding: EdgeInsets.all(16),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(15),
-            gradient: hasUnread
-                ? LinearGradient(
-                    colors: [Colors.blue.shade50, Colors.white],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  )
-                : null,
+            color: cardColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: borderColor),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.03),
+                blurRadius: 20,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Avatar
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: hasUnread
-                        ? [Colors.blue.shade300, Colors.blue.shade500]
-                        : [lightGreen, accentGreen],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: (hasUnread ? Colors.blue : primaryGreen)
-                          .withOpacity(0.3),
-                      blurRadius: 6,
-                      offset: Offset(0, 3),
+              // Avatar with badge
+              Stack(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [primaryColor, secondaryColor],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      shape: BoxShape.circle,
                     ),
-                  ],
-                ),
-                child: Center(
-                  child: Text(
-                    thread.senderName.substring(0, 1).toUpperCase(),
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                    child: Center(
+                      child: Text(
+                        thread.senderName.substring(0, 1).toUpperCase(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                  if (hasUnread)
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      child: Container(
+                        width: 16,
+                        height: 16,
+                        decoration: BoxDecoration(
+                          color: errorColor,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: cardColor, width: 2),
+                        ),
+                      ),
+                    ),
+                ],
               ),
-              SizedBox(width: 15),
+              const SizedBox(width: 16),
 
               // Thread Info
               Expanded(
@@ -554,76 +690,71 @@ class _MessagesPageState extends State<MessagesPage> {
                             thread.senderName,
                             style: TextStyle(
                               fontSize: 16,
-                              fontWeight: hasUnread
-                                  ? FontWeight.w700
-                                  : FontWeight.w600,
-                              color: hasUnread
-                                  ? Colors.blue.shade800
-                                  : darkGreen,
+                              fontWeight: FontWeight.w700,
+                              color: textPrimary,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         if (hasUnread)
                           Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 10,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [Colors.red, Colors.orange],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
+                              color: errorColor.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: errorColor.withOpacity(0.2),
+                              ),
                             ),
                             child: Text(
-                              '${thread.unreadCount}',
+                              '${thread.unreadCount} new',
                               style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                                color: errorColor,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
                           ),
                       ],
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
                       thread.senderEmail,
                       style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
+                        fontSize: 13,
+                        color: textSecondary,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
-                    SizedBox(height: 6),
+                    const SizedBox(height: 12),
                     Container(
-                      padding: EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.grey.shade50,
-                        borderRadius: BorderRadius.circular(8),
+                        color: backgroundColor,
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
                         children: [
                           Icon(
-                            Icons.message,
-                            size: 14,
-                            color: Colors.grey.shade500,
+                            isAdminReply
+                                ? Icons.reply_rounded
+                                : Icons.message_rounded,
+                            size: 16,
+                            color: isAdminReply ? successColor : primaryColor,
                           ),
-                          SizedBox(width: 6),
+                          const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              messageContent.length > 50
-                                  ? '${messageContent.substring(0, 50)}...'
-                                  : messageContent,
+                              messageContent,
                               style: TextStyle(
                                 fontSize: 13,
-                                color: Colors.grey.shade700,
-                                fontStyle: lastMessage?.isAdmin == true
+                                color: textPrimary,
+                                fontStyle: isAdminReply
                                     ? FontStyle.italic
-                                    : null,
+                                    : FontStyle.normal,
                               ),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
@@ -632,50 +763,50 @@ class _MessagesPageState extends State<MessagesPage> {
                         ],
                       ),
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     Row(
                       children: [
                         Icon(
-                          Icons.access_time,
+                          Icons.access_time_rounded,
                           size: 14,
-                          color: Colors.grey.shade500,
+                          color: textSecondary,
                         ),
-                        SizedBox(width: 4),
+                        const SizedBox(width: 4),
                         Text(
                           _formatTimeAgo(thread.lastMessageTime),
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.grey.shade600,
+                            color: textSecondary,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
-                        Spacer(),
+                        const Spacer(),
                         if (hasReplied)
                           Container(
-                            padding: EdgeInsets.symmetric(
+                            padding: const EdgeInsets.symmetric(
                               horizontal: 8,
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.green.shade50,
-                              borderRadius: BorderRadius.circular(8),
+                              color: successColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
                               border: Border.all(
-                                color: Colors.green.shade200,
-                                width: 1,
+                                color: successColor.withOpacity(0.2),
                               ),
                             ),
                             child: Row(
                               children: [
                                 Icon(
-                                  Icons.reply,
+                                  Icons.reply_rounded,
                                   size: 12,
-                                  color: Colors.green.shade700,
+                                  color: successColor,
                                 ),
-                                SizedBox(width: 4),
+                                const SizedBox(width: 4),
                                 Text(
                                   'Replied',
                                   style: TextStyle(
                                     fontSize: 11,
-                                    color: Colors.green.shade700,
+                                    color: successColor,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -687,57 +818,10 @@ class _MessagesPageState extends State<MessagesPage> {
                   ],
                 ),
               ),
-
-              // Action Menu
-              SizedBox(width: 8),
-              PopupMenuButton<String>(
-                onSelected: (value) async {
-                  if (value == 'mark_read' && hasUnread) {
-                    await _markThreadAsRead(thread);
-                  } else if (value == 'delete') {
-                    _showDeleteDialog(thread);
-                  }
-                },
-                itemBuilder: (context) => [
-                  if (hasUnread)
-                    PopupMenuItem(
-                      value: 'mark_read',
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.mark_email_read,
-                            size: 18,
-                            color: Colors.blue,
-                          ),
-                          SizedBox(width: 10),
-                          Text(
-                            'Mark as Read',
-                            style: TextStyle(
-                              color: Colors.blue.shade700,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  PopupMenuItem(
-                    value: 'delete',
-                    child: Row(
-                      children: [
-                        Icon(Icons.delete_outline, size: 18, color: Colors.red),
-                        SizedBox(width: 10),
-                        Text(
-                          'Delete',
-                          style: TextStyle(
-                            color: Colors.red,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-                icon: Icon(Icons.more_vert, color: Colors.grey.shade600),
+              const SizedBox(width: 8),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: textSecondary,
               ),
             ],
           ),
@@ -750,31 +834,48 @@ class _MessagesPageState extends State<MessagesPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: cardColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
         title: Row(
           children: [
-            Icon(Icons.delete_outline, color: Colors.red, size: 24),
-            SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: errorColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.delete_outline_rounded,
+                color: errorColor,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
             Text(
               'Delete Conversation?',
-              style: TextStyle(color: darkGreen, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: textPrimary,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ],
         ),
         content: Text(
           'Delete all messages with ${thread.senderName}? This action cannot be undone.',
-          style: TextStyle(color: Colors.grey.shade700, fontSize: 15),
+          style: TextStyle(
+            color: textSecondary,
+            fontSize: 14,
+          ),
         ),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Cancel',
-              style: TextStyle(
-                color: Colors.grey.shade600,
-                fontWeight: FontWeight.w500,
-              ),
+            style: TextButton.styleFrom(
+              foregroundColor: textSecondary,
             ),
+            child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () {
@@ -782,13 +883,13 @@ class _MessagesPageState extends State<MessagesPage> {
               _deleteThread(thread);
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
+              backgroundColor: errorColor,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: Text('Delete'),
+            child: const Text('Delete'),
           ),
         ],
       ),
@@ -799,21 +900,24 @@ class _MessagesPageState extends State<MessagesPage> {
     // TODO: Implement API call to delete thread
     setState(() {
       _threads.removeWhere((t) => t.senderId == thread.senderId);
-      _totalUnread = _threads.fold(0, (sum, t) => sum + t.unreadCount);
+      _totalUnread =
+          _threads.fold(0, (sum, t) => sum + t.unreadCount);
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
           children: [
-            Icon(Icons.check_circle, color: Colors.white, size: 20),
-            SizedBox(width: 8),
-            Text('Conversation deleted'),
+            Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+            const SizedBox(width: 8),
+            const Text('Conversation deleted'),
           ],
         ),
-        backgroundColor: primaryGreen,
+        backgroundColor: successColor,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
       ),
     );
   }
@@ -827,7 +931,8 @@ class _MessagesPageState extends State<MessagesPage> {
     if (diff.inHours < 24) return '${diff.inHours}h ago';
     if (diff.inDays == 1) return 'Yesterday';
     if (diff.inDays < 7) return '${diff.inDays}d ago';
+    if (diff.inDays < 30) return '${(diff.inDays / 7).floor()}w ago';
 
-    return '${date.day}/${date.month}/${date.year}';
+    return DateFormat('MMM dd, yyyy').format(date);
   }
 }

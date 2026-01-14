@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:fl_chart/fl_chart.dart';
 import '../services/shared.dart';
 import '../models/sensor_model.dart';
+import 'package:intl/intl.dart';
 
 class SensorDetailPage extends StatefulWidget {
   final String sensorName;
@@ -21,10 +22,18 @@ class SensorDetailPage extends StatefulWidget {
 }
 
 class _SensorDetailPageState extends State<SensorDetailPage> {
-  final Color darkGreen = const Color(0xFF456028);
-  final Color mediumGreen = const Color(0xFF94A65E);
-  final Color lightGreen = const Color(0xFFDDDDA1);
-  final Color creamBackground = const Color(0xFFF8F9FA);
+  // Modern Color Palette
+  final Color primaryColor = const Color(0xFF4361EE); // Modern blue
+  final Color secondaryColor = const Color(0xFF3A0CA3); // Dark blue
+  final Color accentColor = const Color(0xFF4CC9F0); // Light blue
+  final Color successColor = const Color(0xFF06D6A0); // Green
+  final Color warningColor = const Color(0xFFFFD166); // Yellow
+  final Color errorColor = const Color(0xFFEF476F); // Red
+  final Color backgroundColor = const Color(0xFFF8F9FF); // Light background
+  final Color cardColor = Colors.white;
+  final Color textPrimary = const Color(0xFF2B2D42);
+  final Color textSecondary = const Color(0xFF8D99AE);
+  final Color borderColor = const Color(0xFFE9ECEF);
 
   static const String baseUrl =
       'https://uncollapsable-overfly-blaine.ngrok-free.dev/api';
@@ -76,7 +85,6 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
       );
 
       print('Sensor data response status: ${response.statusCode}');
-      print('Sensor data response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -108,12 +116,11 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
     final now = DateTime.now();
     final List<SensorData> dummyData = [];
 
-    // Generate dummy data based on sensor type
     double baseValue = _getBaseValueForSensor();
 
     for (int i = 0; i < 50; i++) {
       final time = now.subtract(Duration(minutes: i * 10));
-      final variation = (i % 10) - 5.0; // Some variation
+      final variation = (i % 10) - 5.0;
       final value = baseValue + variation;
 
       dummyData.add(
@@ -183,7 +190,6 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
     final avg = values.reduce((a, b) => a + b) / values.length;
     final latest = sensorHistory.first.value;
 
-    // Determine trend
     String trend = 'stable';
     if (sensorHistory.length >= 3) {
       final recentAvg =
@@ -200,7 +206,6 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
       if (recentAvg < olderAvg - 0.5) trend = 'falling';
     }
 
-    // Check if sensor is online (data in last 5 minutes)
     final lastUpdate = sensorHistory.first.timestamp;
     final fiveMinutesAgo = DateTime.now().subtract(const Duration(minutes: 5));
     isOnline = lastUpdate.isAfter(fiveMinutesAgo);
@@ -219,25 +224,25 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
   Color _getValueColor(double value) {
     switch (widget.sensorName) {
       case 'dht_temp':
-        if (value > 30) return Colors.red;
-        if (value < 20) return Colors.blue;
-        return Colors.green;
+        if (value > 30) return errorColor;
+        if (value < 20) return accentColor;
+        return successColor;
       case 'dht_humid':
-        if (value > 80) return Colors.orange;
-        if (value < 40) return Colors.yellow;
-        return Colors.green;
+        if (value > 80) return warningColor;
+        if (value < 40) return warningColor;
+        return successColor;
       case 'ph':
-        if (value < 6.0 || value > 7.5) return Colors.red;
-        return Colors.green;
+        if (value < 6.0 || value > 7.5) return errorColor;
+        return successColor;
       case 'ec':
-        if (value < 1.0 || value > 2.0) return Colors.orange;
-        return Colors.green;
+        if (value < 1.0 || value > 2.0) return warningColor;
+        return successColor;
       case 'ultrasonic':
-        if (value < 20) return Colors.red;
-        if (value < 50) return Colors.orange;
-        return Colors.green;
+        if (value < 20) return errorColor;
+        if (value < 50) return warningColor;
+        return successColor;
       default:
-        return darkGreen;
+        return primaryColor;
     }
   }
 
@@ -298,338 +303,457 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
     }
   }
 
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: backgroundColor,
+      appBar: AppBar(
+        title: Text(
+          widget.displayName,
+          style: TextStyle(
+            color: textPrimary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        backgroundColor: cardColor,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios_rounded, color: textPrimary),
+          onPressed: () => Navigator.pop(context),
+        ),
+        actions: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: primaryColor.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              icon: Icon(Icons.refresh_rounded, color: primaryColor),
+              onPressed: _loadSensorData,
+              tooltip: 'Refresh',
+            ),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
+      body: isLoading
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(color: primaryColor),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Loading sensor data...',
+                    style: TextStyle(
+                      color: textSecondary,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                children: [
+                  // Current Value Card
+                  _buildCurrentValueCard(),
+                  const SizedBox(height: 24),
+
+                  // Time Range Selector
+                  _buildTimeRangeSelector(),
+                  const SizedBox(height: 24),
+
+                  // Stats Grid
+                  _buildStatsGrid(),
+                  const SizedBox(height: 32),
+
+                  // Chart Section
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: cardColor,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: borderColor),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.03),
+                          blurRadius: 20,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Historical Data',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: textPrimary,
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: backgroundColor,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: borderColor),
+                              ),
+                              child: Text(
+                                '${sensorHistory.length} readings',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: textSecondary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        SizedBox(
+                          height: 200,
+                          child: _buildChart(),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+
+                  // Recent Readings Table
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: cardColor,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: borderColor),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.03),
+                          blurRadius: 20,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Recent Readings',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: textPrimary,
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: primaryColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                    color: primaryColor.withOpacity(0.2)),
+                              ),
+                              child: Text(
+                                'Last 10 readings',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: primaryColor,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        ..._buildRecentReadings(),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+
+                  // Sensor Info Card
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: primaryColor.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: primaryColor.withOpacity(0.1)),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: primaryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            _getSensorIcon(),
+                            color: primaryColor,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Sensor Information',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Optimal range: ${_getOptimalRange()} • Unit: ${_getUnit()}',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 100),
+                ],
+              ),
+            ),
+    );
+  }
+
   Widget _buildCurrentValueCard() {
     final isOptimal = _isValueOptimal(currentValue);
     final valueColor = _getValueColor(currentValue);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            valueColor.withValues(alpha: 0.1),
-            valueColor.withValues(alpha: 0.05),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: valueColor.withValues(alpha: 0.2)),
+        color: cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: borderColor),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.displayName,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Current Reading',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: isOnline
+                      ? successColor.withOpacity(0.1)
+                      : errorColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isOnline
+                        ? successColor.withOpacity(0.2)
+                        : errorColor.withOpacity(0.2),
+                  ),
+                ),
+                child: Row(
                   children: [
-                    Text(
-                      widget.displayName,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: darkGreen,
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: isOnline ? successColor : errorColor,
+                        shape: BoxShape.circle,
                       ),
                     ),
+                    const SizedBox(width: 8),
                     Text(
-                      'Current Reading',
+                      isOnline ? 'Online' : 'Offline',
                       style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
+                        fontSize: 13,
+                        color: isOnline ? successColor : errorColor,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isOnline
-                        ? Colors.green.withValues(alpha: 0.1)
-                        : Colors.red.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: isOnline ? Colors.green : Colors.red,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        isOnline ? 'Online' : 'Offline',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isOnline ? Colors.green : Colors.red,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${currentValue.toStringAsFixed(widget.sensorName == 'ph' || widget.sensorName == 'ec' ? 2 : 1)}${_getUnit()}',
-                        style: TextStyle(
-                          fontSize: 42,
-                          fontWeight: FontWeight.w800,
-                          color: valueColor,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isOptimal
-                              ? Colors.green.withValues(alpha: 0.1)
-                              : Colors.orange.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          isOptimal ? 'Optimal' : 'Needs Attention',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: isOptimal ? Colors.green : Colors.orange,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(
-                  _getSensorIcon(),
-                  size: 60,
-                  color: valueColor.withValues(alpha: 0.3),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Optimal range: ${_getOptimalRange()}',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey.shade600,
-                fontStyle: FontStyle.italic,
               ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${currentValue.toStringAsFixed(widget.sensorName == 'ph' || widget.sensorName == 'ec' ? 2 : 1)}${_getUnit()}',
+                      style: TextStyle(
+                        fontSize: 48,
+                        fontWeight: FontWeight.w800,
+                        color: valueColor,
+                        height: 1,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isOptimal
+                            ? successColor.withOpacity(0.1)
+                            : warningColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isOptimal
+                              ? successColor.withOpacity(0.2)
+                              : warningColor.withOpacity(0.2),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isOptimal
+                                ? Icons.check_circle_rounded
+                                : Icons.warning_rounded,
+                            size: 16,
+                            color: isOptimal ? successColor : warningColor,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            isOptimal ? 'Optimal' : 'Needs Attention',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: isOptimal ? successColor : warningColor,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 20),
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: valueColor.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Icon(
+                    _getSensorIcon(),
+                    size: 40,
+                    color: valueColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'Optimal range: ${_getOptimalRange()}',
+            style: TextStyle(
+              fontSize: 13,
+              color: textSecondary,
+              fontStyle: FontStyle.italic,
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatsGrid() {
-    return GridView(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 1.5,
-      ),
-      children: [
-        _statCard(
-          title: 'Minimum',
-          value: sensorStats['min']?.toStringAsFixed(1) ?? '0.0',
-          unit: _getUnit(),
-          icon: Icons.arrow_downward,
-          color: Colors.blue,
-        ),
-        _statCard(
-          title: 'Maximum',
-          value: sensorStats['max']?.toStringAsFixed(1) ?? '0.0',
-          unit: _getUnit(),
-          icon: Icons.arrow_upward,
-          color: Colors.red,
-        ),
-        _statCard(
-          title: 'Average',
-          value: sensorStats['avg']?.toStringAsFixed(1) ?? '0.0',
-          unit: _getUnit(),
-          icon: Icons.timeline,
-          color: Colors.purple,
-        ),
-        _statCard(
-          title: 'Trend',
-          value: sensorStats['trend'] ?? 'stable',
-          unit: '',
-          icon: _getTrendIcon(),
-          color: _getTrendColor(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildChart() {
-    if (sensorHistory.isEmpty) {
-      return Container(
-        height: 200,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: const Center(child: Text('No data available')),
-      );
-    }
-
-    final spots = sensorHistory
-        .asMap()
-        .map((i, data) => MapEntry(i, FlSpot(i.toDouble(), data.value)))
-        .values
-        .toList()
-        .reversed
-        .toList();
-
-    return Container(
-      height: 200,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
           ),
         ],
-      ),
-      child: LineChart(
-        LineChartData(
-          gridData: FlGridData(
-            show: true,
-            drawVerticalLine: false,
-            getDrawingHorizontalLine: (value) => FlLine(
-              color: Colors.grey.withValues(alpha: 0.1),
-              strokeWidth: 1,
-            ),
-          ),
-          titlesData: FlTitlesData(
-            show: true,
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 30,
-                getTitlesWidget: (value, meta) {
-                  if (value == 0 || value == spots.length - 1) {
-                    final index = value.toInt();
-                    if (index < sensorHistory.length) {
-                      final time = sensorHistory[index].timestamp;
-                      return Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: Text(
-                          '${time.hour}:${time.minute.toString().padLeft(2, '0')}',
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      );
-                    }
-                  }
-                  return const SizedBox();
-                },
-              ),
-            ),
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 40,
-                getTitlesWidget: (value, meta) {
-                  return Text(
-                    value.toInt().toString(),
-                    style: const TextStyle(fontSize: 10, color: Colors.grey),
-                  );
-                },
-              ),
-            ),
-            rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-          ),
-          borderData: FlBorderData(
-            show: true,
-            border: Border.all(
-              color: Colors.grey.withValues(alpha: 0.2),
-              width: 1,
-            ),
-          ),
-          minX: 0,
-          maxX: spots.length > 1 ? spots.length - 1 : 1,
-          minY: (sensorStats['min'] ?? 0) * 0.9,
-          maxY: (sensorStats['max'] ?? 1) * 1.1,
-          lineBarsData: [
-            LineChartBarData(
-              spots: spots,
-              isCurved: true,
-              color: _getValueColor(currentValue),
-              barWidth: 3,
-              isStrokeCapRound: true,
-              dotData: const FlDotData(show: false),
-              belowBarData: BarAreaData(
-                show: true,
-                color: _getValueColor(currentValue).withValues(alpha: 0.1),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
 
   Widget _buildTimeRangeSelector() {
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 12),
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        color: cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: borderColor),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _timeRangeButton('24h'),
-          _timeRangeButton('7d'),
-          _timeRangeButton('30d'),
+          Text(
+            'Time Range',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: textPrimary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _timeRangeButton('24h'),
+              _timeRangeButton('7d'),
+              _timeRangeButton('30d'),
+            ],
+          ),
         ],
       ),
     );
@@ -644,22 +768,64 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
         _loadSensorData();
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? darkGreen : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
+          color: isSelected ? primaryColor : backgroundColor,
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? darkGreen : Colors.grey.shade300,
+            color: isSelected ? primaryColor : borderColor,
           ),
         ),
         child: Text(
           range,
           style: TextStyle(
-            color: isSelected ? Colors.white : darkGreen,
+            color: isSelected ? Colors.white : textPrimary,
             fontWeight: FontWeight.w600,
+            fontSize: 14,
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildStatsGrid() {
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 2,
+      crossAxisSpacing: 16,
+      mainAxisSpacing: 16,
+      childAspectRatio: 1.2,
+      children: [
+        _statCard(
+          title: 'Minimum',
+          value: sensorStats['min']?.toStringAsFixed(1) ?? '0.0',
+          unit: _getUnit(),
+          icon: Icons.arrow_downward_rounded,
+          color: accentColor,
+        ),
+        _statCard(
+          title: 'Maximum',
+          value: sensorStats['max']?.toStringAsFixed(1) ?? '0.0',
+          unit: _getUnit(),
+          icon: Icons.arrow_upward_rounded,
+          color: errorColor,
+        ),
+        _statCard(
+          title: 'Average',
+          value: sensorStats['avg']?.toStringAsFixed(1) ?? '0.0',
+          unit: _getUnit(),
+          icon: Icons.timeline_rounded,
+          color: primaryColor,
+        ),
+        _statCard(
+          title: 'Trend',
+          value: sensorStats['trend'] ?? 'stable',
+          unit: '',
+          icon: _getTrendIcon(),
+          color: _getTrendColor(),
+        ),
+      ],
     );
   }
 
@@ -671,85 +837,310 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
     required Color color,
   }) {
     return Container(
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        color: cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
           ),
         ],
-        border: Border.all(color: Colors.grey.shade100),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Icon(icon, size: 16, color: color),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, size: 20, color: color),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              color: textPrimary,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: textSecondary,
+                  fontWeight: FontWeight.w600,
                 ),
-                const SizedBox(width: 8),
+              ),
+              if (unit.isNotEmpty) ...[
+                const SizedBox(width: 4),
                 Text(
-                  title,
+                  unit,
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey.shade600,
-                    fontWeight: FontWeight.w600,
+                    color: textSecondary.withOpacity(0.7),
                   ),
                 ),
               ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChart() {
+    if (sensorHistory.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.show_chart_rounded,
+              size: 48,
+              color: textSecondary.withOpacity(0.3),
             ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: darkGreen,
-                  ),
-                ),
-                if (unit.isNotEmpty)
-                  Text(
-                    unit,
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                  ),
-              ],
+            const SizedBox(height: 12),
+            Text(
+              'No data available',
+              style: TextStyle(
+                color: textSecondary,
+              ),
             ),
           ],
         ),
+      );
+    }
+
+    final spots = sensorHistory
+        .asMap()
+        .map((i, data) => MapEntry(i, FlSpot(i.toDouble(), data.value)))
+        .values
+        .toList()
+        .reversed
+        .toList();
+
+    final valueColor = _getValueColor(currentValue);
+
+    return LineChart(
+      LineChartData(
+        gridData: FlGridData(
+          show: true,
+          drawHorizontalLine: true,
+          drawVerticalLine: false,
+          getDrawingHorizontalLine: (value) => FlLine(
+            color: borderColor,
+            strokeWidth: 1,
+          ),
+        ),
+        titlesData: FlTitlesData(
+          show: true,
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 30,
+              getTitlesWidget: (value, meta) {
+                if (value == 0 || value == spots.length - 1) {
+                  final index = value.toInt();
+                  if (index < sensorHistory.length) {
+                    final time = sensorHistory[index].timestamp;
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        '${time.hour}:${time.minute.toString().padLeft(2, '0')}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: textSecondary,
+                        ),
+                      ),
+                    );
+                  }
+                }
+                return const SizedBox();
+              },
+            ),
+          ),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 40,
+              getTitlesWidget: (value, meta) {
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Text(
+                    '${value.toInt()}${_getUnit()}',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: textSecondary,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+        ),
+        borderData: FlBorderData(
+          show: true,
+          border: Border.all(
+            color: borderColor,
+            width: 1,
+          ),
+        ),
+        minX: 0,
+        maxX: spots.length > 1 ? spots.length - 1 : 1,
+        minY: (sensorStats['min'] ?? 0) * 0.9,
+        maxY: (sensorStats['max'] ?? 1) * 1.1,
+        lineBarsData: [
+          LineChartBarData(
+            spots: spots,
+            isCurved: true,
+            color: valueColor,
+            barWidth: 3,
+            isStrokeCapRound: true,
+            dotData: const FlDotData(show: false),
+            belowBarData: BarAreaData(
+              show: true,
+              color: valueColor.withOpacity(0.1),
+            ),
+          ),
+        ],
       ),
     );
+  }
+
+  List<Widget> _buildRecentReadings() {
+    final recentReadings = sensorHistory.take(10).toList();
+
+    return recentReadings.map((data) {
+      final isOptimal = _isValueOptimal(data.value);
+      final valueColor = _getValueColor(data.value);
+
+      return Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: borderColor),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: valueColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                _getSensorIcon(),
+                size: 20,
+                color: valueColor,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        DateFormat('HH:mm').format(data.timestamp),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: textPrimary,
+                        ),
+                      ),
+                      Text(
+                        DateFormat('MMM dd').format(data.timestamp),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Text(
+                        '${data.value.toStringAsFixed(widget.sensorName == 'ph' || widget.sensorName == 'ec' ? 2 : 1)}${_getUnit()}',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: valueColor,
+                        ),
+                      ),
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isOptimal
+                              ? successColor.withOpacity(0.1)
+                              : warningColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: isOptimal
+                                ? successColor.withOpacity(0.2)
+                                : warningColor.withOpacity(0.2),
+                          ),
+                        ),
+                        child: Text(
+                          isOptimal ? 'Optimal' : 'Check',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isOptimal ? successColor : warningColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }).toList();
   }
 
   IconData _getSensorIcon() {
     switch (widget.sensorName) {
       case 'dht_temp':
-        return Icons.thermostat;
+        return Icons.thermostat_rounded;
       case 'dht_humid':
-        return Icons.water_drop;
+        return Icons.water_drop_rounded;
       case 'ph':
-        return Icons.science;
+        return Icons.science_rounded;
       case 'ec':
-        return Icons.bolt;
+        return Icons.bolt_rounded;
       case 'ldr':
-        return Icons.light_mode;
+        return Icons.light_mode_rounded;
       case 'ultrasonic':
-        return Icons.waves;
+        return Icons.waves_rounded;
       default:
-        return Icons.sensors;
+        return Icons.sensors_rounded;
     }
   }
 
@@ -757,11 +1148,11 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
     final trend = sensorStats['trend'] ?? 'stable';
     switch (trend) {
       case 'rising':
-        return Icons.trending_up;
+        return Icons.trending_up_rounded;
       case 'falling':
-        return Icons.trending_down;
+        return Icons.trending_down_rounded;
       default:
-        return Icons.trending_flat;
+        return Icons.trending_flat_rounded;
     }
   }
 
@@ -769,226 +1160,11 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
     final trend = sensorStats['trend'] ?? 'stable';
     switch (trend) {
       case 'rising':
-        return Colors.green;
+        return successColor;
       case 'falling':
-        return Colors.orange;
+        return warningColor;
       default:
-        return Colors.blue;
+        return primaryColor;
     }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: creamBackground,
-      appBar: AppBar(
-        title: Text(widget.displayName),
-        backgroundColor: darkGreen,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadSensorData,
-            tooltip: 'Refresh',
-          ),
-        ],
-      ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.only(
-                left: 16,
-                right: 16,
-                top: 16,
-                bottom: 100,
-              ),
-              child: Column(
-                children: [
-                  _buildCurrentValueCard(),
-                  _buildTimeRangeSelector(),
-                  _buildStatsGrid(),
-                  const SizedBox(height: 20),
-                  Text(
-                    'Historical Data',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: darkGreen,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildChart(),
-                  const SizedBox(height: 20),
-
-                  // Data Table
-                  // Data Table - FULL WIDTH
-                  Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Text(
-                            'Recent Readings',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: darkGreen,
-                            ),
-                          ),
-                        ),
-                        SingleChildScrollView(
-                          scrollDirection: Axis.vertical,
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(
-                              minWidth: MediaQuery.of(context).size.width - 32,
-                            ),
-                            child: DataTable(
-                              columnSpacing: 0,
-                              horizontalMargin: 16,
-                              dataRowMinHeight: 50,
-                              dataRowMaxHeight: 50,
-                              headingRowHeight: 50,
-                              headingTextStyle: TextStyle(
-                                color: darkGreen,
-                                fontWeight: FontWeight.w600,
-                              ),
-                              columns: [
-                                DataColumn(
-                                  label: Container(
-                                    width:
-                                        MediaQuery.of(context).size.width *
-                                        0.25,
-                                    child: Text(
-                                      'Time',
-                                      style: TextStyle(
-                                        color: darkGreen,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                  numeric: false,
-                                ),
-                                DataColumn(
-                                  label: Container(
-                                    width:
-                                        MediaQuery.of(context).size.width *
-                                        0.35,
-                                    child: Text(
-                                      'Value',
-                                      style: TextStyle(
-                                        color: darkGreen,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                  numeric: true,
-                                ),
-                                DataColumn(
-                                  label: Container(
-                                    width:
-                                        MediaQuery.of(context).size.width *
-                                        0.30,
-                                    child: Text(
-                                      'Status',
-                                      style: TextStyle(
-                                        color: darkGreen,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                  numeric: false,
-                                ),
-                              ],
-                              rows: sensorHistory.take(10).map((data) {
-                                final isOptimal = _isValueOptimal(data.value);
-                                final valueColor = _getValueColor(data.value);
-
-                                return DataRow(
-                                  cells: [
-                                    DataCell(
-                                      Container(
-                                        width:
-                                            MediaQuery.of(context).size.width *
-                                            0.25,
-                                        child: Text(
-                                          '${data.timestamp.hour}:${data.timestamp.minute.toString().padLeft(2, '0')}',
-                                          style: TextStyle(
-                                            color: Colors.grey.shade700,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    DataCell(
-                                      Container(
-                                        width:
-                                            MediaQuery.of(context).size.width *
-                                            0.35,
-                                        child: Text(
-                                          '${data.value.toStringAsFixed(widget.sensorName == 'ph' || widget.sensorName == 'ec' ? 2 : 1)}${_getUnit()}',
-                                          style: TextStyle(
-                                            color: valueColor,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    DataCell(
-                                      Container(
-                                        width:
-                                            MediaQuery.of(context).size.width *
-                                            0.30,
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                          vertical: 4,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: isOptimal
-                                              ? Colors.green.withOpacity(0.1)
-                                              : Colors.orange.withOpacity(0.1),
-                                          borderRadius: BorderRadius.circular(
-                                            4,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          isOptimal ? 'Optimal' : 'Check',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: isOptimal
-                                                ? Colors.green
-                                                : Colors.orange,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                );
-                              }).toList(),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                ],
-              ),
-            ),
-    );
   }
 }

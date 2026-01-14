@@ -13,13 +13,18 @@ class AnalyticsPage extends StatefulWidget {
 }
 
 class _AnalyticsPageState extends State<AnalyticsPage> {
-  final Color darkGreen = const Color(0xFF456028);
-  final Color mediumGreen = const Color(0xFF94A65E);
-  final Color lightGreen = const Color(0xFFDDDDA1);
-  final Color creamBackground = const Color(0xFFF8F9FA);
-  final Color accentBlue = const Color(0xFF5A86AD);
-  final Color accentOrange = const Color(0xFFD18B47);
-  final Color accentPurple = const Color(0xFF7B68B5);
+  // Modern Color Palette (sama dengan halaman lain)
+  final Color primaryColor = const Color(0xFF4361EE); // Modern blue
+  final Color secondaryColor = const Color(0xFF3A0CA3); // Dark blue
+  final Color accentColor = const Color(0xFF4CC9F0); // Light blue
+  final Color successColor = const Color(0xFF06D6A0); // Green
+  final Color warningColor = const Color(0xFFFFD166); // Yellow
+  final Color errorColor = const Color(0xFFEF476F); // Red
+  final Color backgroundColor = const Color(0xFFF8F9FF); // Light background
+  final Color cardColor = Colors.white;
+  final Color textPrimary = const Color(0xFF2B2D42);
+  final Color textSecondary = const Color(0xFF8D99AE);
+  final Color borderColor = const Color(0xFFE9ECEF);
 
   static const String baseUrl =
       'https://uncollapsable-overfly-blaine.ngrok-free.dev/api';
@@ -159,22 +164,20 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     return Column(
       children: [
         // Stats Grid
-        GridView(
+        GridView.count(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            childAspectRatio: 1.2,
-          ),
+          crossAxisCount: 2,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+          childAspectRatio: 1.2,
           children: [
             _metricCard(
               title: 'Total Readings',
               value: '${overview['total_readings'] ?? 0}',
               subtitle: 'Sensor data points',
               icon: Icons.data_usage,
-              color: accentBlue,
+              color: accentColor,
               trend: '+12%',
             ),
             _metricCard(
@@ -183,7 +186,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                   '${overview['avg_temperature']?.toStringAsFixed(1) ?? '0.0'}°C',
               subtitle: 'Optimal range',
               icon: Icons.thermostat,
-              color: Colors.red,
+              color: errorColor,
               trend: 'stable',
             ),
             _metricCard(
@@ -192,7 +195,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                   '${overview['avg_humidity']?.toStringAsFixed(1) ?? '0.0'}%',
               subtitle: 'Within range',
               icon: Icons.water_drop,
-              color: Colors.blue,
+              color: primaryColor,
               trend: '+2%',
             ),
             _metricCard(
@@ -201,24 +204,25 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                   '${overview['system_uptime']?.toStringAsFixed(1) ?? '0.0'}%',
               subtitle: 'Last 7 days',
               icon: Icons.timeline,
-              color: Colors.green,
+              color: successColor,
               trend: '99.9%',
             ),
           ],
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 24),
 
         // Growth Chart
         Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
+            color: cardColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: borderColor),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
+                color: Colors.black.withOpacity(0.03),
+                blurRadius: 20,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
@@ -233,7 +237,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
-                      color: darkGreen,
+                      color: textPrimary,
                     ),
                   ),
                   Container(
@@ -242,20 +246,22 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.green.withValues(alpha: 0.1),
+                      color: successColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: successColor.withOpacity(0.2)),
                     ),
                     child: Text(
                       overview['growth_rate'] ?? '+0.0%',
                       style: TextStyle(
-                        color: Colors.green,
+                        color: successColor,
                         fontWeight: FontWeight.w700,
+                        fontSize: 14,
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               SizedBox(
                 height: 150,
                 child: LineChart(
@@ -275,12 +281,13 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                           FlSpot(6, 22),
                         ],
                         isCurved: true,
-                        color: darkGreen,
+                        color: primaryColor,
                         barWidth: 3,
                         belowBarData: BarAreaData(
                           show: true,
-                          color: darkGreen.withValues(alpha: 0.1),
+                          color: primaryColor.withOpacity(0.1),
                         ),
+                        dotData: const FlDotData(show: false),
                       ),
                     ],
                   ),
@@ -299,55 +306,54 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     return Column(
       children: [
         // Sensor Performance Grid
-        GridView(
+        GridView.count(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            childAspectRatio: 1.3,
-          ),
+          crossAxisCount: 2,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+          childAspectRatio: 1.3,
           children: [
             _sensorMetric(
               name: 'Temperature',
               data: sensors['temperature'] ?? {},
               unit: '°C',
-              color: Colors.red,
+              color: errorColor,
             ),
             _sensorMetric(
               name: 'Humidity',
               data: sensors['humidity'] ?? {},
               unit: '%',
-              color: Colors.blue,
+              color: primaryColor,
             ),
             _sensorMetric(
               name: 'pH Level',
               data: sensors['ph'] ?? {},
               unit: 'pH',
-              color: mediumGreen,
+              color: successColor,
             ),
             _sensorMetric(
               name: 'Light',
               data: sensors['light'] ?? {},
               unit: 'Lux',
-              color: Colors.orange,
+              color: warningColor,
             ),
           ],
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 24),
 
         // Sensor Comparison Chart
         Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
+            color: cardColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: borderColor),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
+                color: Colors.black.withOpacity(0.03),
+                blurRadius: 20,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
@@ -359,10 +365,10 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  color: darkGreen,
+                  color: textPrimary,
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               SizedBox(
                 height: 200,
                 child: BarChart(
@@ -375,40 +381,48 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                         barRods: [
                           BarChartRodData(
                             toY: 85,
-                            color: Colors.red,
-                            width: 12,
+                            color: errorColor,
+                            width: 16,
+                            borderRadius: BorderRadius.circular(4),
                           ),
                         ],
+                        showingTooltipIndicators: [0],
                       ),
                       BarChartGroupData(
                         x: 1,
                         barRods: [
                           BarChartRodData(
                             toY: 92,
-                            color: Colors.blue,
-                            width: 12,
+                            color: primaryColor,
+                            width: 16,
+                            borderRadius: BorderRadius.circular(4),
                           ),
                         ],
+                        showingTooltipIndicators: [0],
                       ),
                       BarChartGroupData(
                         x: 2,
                         barRods: [
                           BarChartRodData(
                             toY: 78,
-                            color: mediumGreen,
-                            width: 12,
+                            color: successColor,
+                            width: 16,
+                            borderRadius: BorderRadius.circular(4),
                           ),
                         ],
+                        showingTooltipIndicators: [0],
                       ),
                       BarChartGroupData(
                         x: 3,
                         barRods: [
                           BarChartRodData(
                             toY: 95,
-                            color: Colors.orange,
-                            width: 12,
+                            color: warningColor,
+                            width: 16,
+                            borderRadius: BorderRadius.circular(4),
                           ),
                         ],
+                        showingTooltipIndicators: [0],
                       ),
                     ],
                     titlesData: FlTitlesData(
@@ -418,10 +432,14 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                           getTitlesWidget: (value, meta) {
                             const labels = ['Temp', 'Humid', 'pH', 'Light'];
                             return Padding(
-                              padding: const EdgeInsets.only(top: 4),
+                              padding: const EdgeInsets.only(top: 8),
                               child: Text(
                                 labels[value.toInt()],
-                                style: const TextStyle(fontSize: 12),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: textSecondary,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             );
                           },
@@ -433,11 +451,32 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                           getTitlesWidget: (value, meta) {
                             return Text(
                               '${value.toInt()}%',
-                              style: const TextStyle(fontSize: 10),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: textSecondary,
+                              ),
                             );
                           },
+                          interval: 25,
                         ),
                       ),
+                      rightTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      topTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                    ),
+                    gridData: FlGridData(
+                      show: true,
+                      drawHorizontalLine: true,
+                      horizontalInterval: 25,
+                      getDrawingHorizontalLine: (value) {
+                        return FlLine(
+                          color: borderColor,
+                          strokeWidth: 1,
+                        );
+                      },
                     ),
                   ),
                 ),
@@ -457,15 +496,16 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
       children: [
         // User Stats
         Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
+            color: cardColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: borderColor),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
+                color: Colors.black.withOpacity(0.03),
+                blurRadius: 20,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
@@ -491,22 +531,26 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
-              Divider(color: Colors.grey.shade200),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
+              Divider(color: borderColor),
+              const SizedBox(height: 24),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
                     'Avg Session Duration',
-                    style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   Text(
                     users['avg_session'] ?? '0m',
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 20,
                       fontWeight: FontWeight.w700,
-                      color: darkGreen,
+                      color: textPrimary,
                     ),
                   ),
                 ],
@@ -514,19 +558,20 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
             ],
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 24),
 
         // User Activity Chart
         Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
+            color: cardColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: borderColor),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
+                color: Colors.black.withOpacity(0.03),
+                blurRadius: 20,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
@@ -538,16 +583,66 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  color: darkGreen,
+                  color: textPrimary,
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               SizedBox(
                 height: 150,
                 child: LineChart(
                   LineChartData(
-                    gridData: FlGridData(show: false),
-                    titlesData: const FlTitlesData(show: false),
+                    gridData: FlGridData(
+                      show: true,
+                      drawHorizontalLine: true,
+                      getDrawingHorizontalLine: (value) {
+                        return FlLine(
+                          color: borderColor,
+                          strokeWidth: 1,
+                        );
+                      },
+                    ),
+                    titlesData: FlTitlesData(
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          getTitlesWidget: (value, meta) {
+                            const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                            return value.toInt() < days.length
+                                ? Padding(
+                                    padding: const EdgeInsets.only(top: 8),
+                                    child: Text(
+                                      days[value.toInt()],
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: textSecondary,
+                                      ),
+                                    ),
+                                  )
+                                : const SizedBox();
+                          },
+                        ),
+                      ),
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          getTitlesWidget: (value, meta) {
+                            return Text(
+                              value.toInt().toString(),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: textSecondary,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      rightTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      topTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                    ),
                     borderData: FlBorderData(show: false),
                     lineBarsData: [
                       LineChartBarData(
@@ -558,12 +653,13 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                           );
                         }).toList(),
                         isCurved: true,
-                        color: accentPurple,
+                        color: secondaryColor,
                         barWidth: 3,
                         belowBarData: BarAreaData(
                           show: true,
-                          color: accentPurple.withValues(alpha: 0.1),
+                          color: secondaryColor.withOpacity(0.1),
                         ),
+                        dotData: const FlDotData(show: false),
                       ),
                     ],
                   ),
@@ -583,59 +679,58 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
       children: [
         // System Performance
         Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
+            color: cardColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: borderColor),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
+                color: Colors.black.withOpacity(0.03),
+                blurRadius: 20,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
           child: Column(
             children: [
-              GridView(
+              GridView.count(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 1.5,
-                ),
+                crossAxisCount: 2,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                childAspectRatio: 1.5,
                 children: [
                   _systemMetric(
                     'Uptime',
                     system['uptime'] ?? '0%',
                     Icons.timeline,
-                    Colors.green,
+                    successColor,
                   ),
                   _systemMetric(
                     'Avg Response',
                     system['avg_response'] ?? '0ms',
                     Icons.speed,
-                    Colors.blue,
+                    primaryColor,
                   ),
                   _systemMetric(
                     'Error Rate',
                     system['error_rate'] ?? '0%',
                     Icons.error,
-                    Colors.red,
+                    errorColor,
                   ),
                   _systemMetric(
                     'Data Volume',
                     system['data_volume'] ?? '0GB',
                     Icons.storage,
-                    Colors.orange,
+                    accentColor,
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
-              Divider(color: Colors.grey.shade200),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
+              Divider(color: borderColor),
+              const SizedBox(height: 24),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -644,15 +739,29 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: darkGreen,
+                      color: textPrimary,
                     ),
                   ),
-                  Text(
-                    'A+',
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.green,
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [successColor, Colors.green],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      'A+',
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ],
@@ -660,19 +769,20 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
             ],
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 24),
 
         // Alerts List
         Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
+            color: cardColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: borderColor),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
+                color: Colors.black.withOpacity(0.03),
+                blurRadius: 20,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
@@ -687,7 +797,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
-                      color: darkGreen,
+                      color: textPrimary,
                     ),
                   ),
                   Container(
@@ -696,14 +806,16 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.orange.withValues(alpha: 0.1),
+                      color: warningColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: warningColor.withOpacity(0.2)),
                     ),
                     child: Text(
                       '${(analyticsData['alerts'] ?? []).length} alerts',
                       style: TextStyle(
-                        color: Colors.orange,
+                        color: warningColor,
                         fontWeight: FontWeight.w600,
+                        fontSize: 14,
                       ),
                     ),
                   ),
@@ -725,13 +837,32 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
 
     if (alerts.isEmpty) {
       return [
-        Center(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Text(
-              'No alerts in selected period',
-              style: TextStyle(color: Colors.grey.shade600),
-            ),
+        Container(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            children: [
+              Icon(
+                Icons.check_circle_outline,
+                color: successColor,
+                size: 48,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'No alerts in selected period',
+                style: TextStyle(
+                  color: textSecondary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Everything is running smoothly',
+                style: TextStyle(
+                  color: textSecondary.withOpacity(0.7),
+                ),
+              ),
+            ],
           ),
         ),
       ];
@@ -744,30 +875,37 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
 
       switch (type) {
         case 'error':
-          color = Colors.red;
-          icon = Icons.error;
+          color = errorColor;
+          icon = Icons.error_outline_rounded;
           break;
         case 'warning':
-          color = Colors.orange;
-          icon = Icons.warning;
+          color = warningColor;
+          icon = Icons.warning_amber_rounded;
           break;
         default:
-          color = Colors.blue;
-          icon = Icons.info;
+          color = primaryColor;
+          icon = Icons.info_outline_rounded;
       }
 
       return Container(
         margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withValues(alpha: 0.2)),
+          color: color.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.1)),
         ),
         child: Row(
           children: [
-            Icon(icon, color: color, size: 20),
-            const SizedBox(width: 12),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -776,26 +914,27 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                     alert['message'] ?? '',
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      color: darkGreen,
+                      color: textPrimary,
+                      fontSize: 14,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 8),
                   Row(
                     children: [
                       if (alert['sensor'] != null)
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
+                            horizontal: 8,
+                            vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: color.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(4),
+                            color: color.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
                             alert['sensor'],
                             style: TextStyle(
-                              fontSize: 10,
+                              fontSize: 11,
                               color: color,
                               fontWeight: FontWeight.w600,
                             ),
@@ -803,19 +942,19 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                         ),
                       if (alert['source'] != null)
                         Container(
-                          margin: const EdgeInsets.only(left: 4),
+                          margin: const EdgeInsets.only(left: 8),
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
+                            horizontal: 8,
+                            vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: color.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(4),
+                            color: color.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
                             alert['source'],
                             style: TextStyle(
-                              fontSize: 10,
+                              fontSize: 11,
                               color: color,
                               fontWeight: FontWeight.w600,
                             ),
@@ -825,8 +964,8 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                       Text(
                         alert['time'] ?? '',
                         style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.grey.shade600,
+                          fontSize: 12,
+                          color: textSecondary,
                         ),
                       ),
                     ],
@@ -850,88 +989,111 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        color: cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
           ),
         ],
-        border: Border.all(color: Colors.grey.shade100),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(6),
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(icon, size: 18, color: color),
+                  child: Icon(icon, size: 20, color: color),
                 ),
                 const Spacer(),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
+                    horizontal: 10,
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
                     color: trend.contains('+')
-                        ? Colors.green.withValues(alpha: 0.1)
+                        ? successColor.withOpacity(0.1)
                         : trend.contains('-')
-                        ? Colors.red.withValues(alpha: 0.1)
-                        : Colors.blue.withValues(alpha: 0.1),
+                        ? errorColor.withOpacity(0.1)
+                        : primaryColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    trend,
-                    style: TextStyle(
-                      fontSize: 10,
+                    border: Border.all(
                       color: trend.contains('+')
-                          ? Colors.green
+                          ? successColor.withOpacity(0.2)
                           : trend.contains('-')
-                          ? Colors.red
-                          : Colors.blue,
-                      fontWeight: FontWeight.w600,
+                          ? errorColor.withOpacity(0.2)
+                          : primaryColor.withOpacity(0.2),
                     ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        trend.contains('+')
+                            ? Icons.trending_up_rounded
+                            : trend.contains('-')
+                            ? Icons.trending_down_rounded
+                            : Icons.trending_flat_rounded,
+                        size: 12,
+                        color: trend.contains('+')
+                            ? successColor
+                            : trend.contains('-')
+                            ? errorColor
+                            : primaryColor,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        trend,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: trend.contains('+')
+                              ? successColor
+                              : trend.contains('-')
+                              ? errorColor
+                              : primaryColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: darkGreen,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
-                ),
-              ],
+            const SizedBox(height: 16),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                color: textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 14,
+                color: textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: TextStyle(
+                fontSize: 12,
+                color: textSecondary.withOpacity(0.7),
+              ),
             ),
           ],
         ),
@@ -947,124 +1109,151 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        color: cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
           ),
         ],
-        border: Border.all(color: Colors.grey.shade100),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              name,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: darkGreen,
-              ),
-            ),
-            const SizedBox(height: 8),
             Row(
               children: [
                 Container(
-                  width: 40,
-                  height: 40,
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Center(
-                    child: Text(
-                      '${data['avg']?.toStringAsFixed(1) ?? '0.0'}$unit',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: color,
-                      ),
-                    ),
+                  child: Icon(
+                    _getSensorIcon(name),
+                    size: 20,
+                    color: color,
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            'Min:',
-                            style: TextStyle(fontSize: 10, color: Colors.grey),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${data['min']?.toStringAsFixed(1) ?? '0.0'}$unit',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
+                  child: Text(
+                    name,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: textPrimary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '${data['avg']?.toStringAsFixed(1) ?? '0.0'}$unit',
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w800,
+                color: textPrimary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Min',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: textSecondary,
                       ),
-                      Row(
-                        children: [
-                          Text(
-                            'Max:',
-                            style: TextStyle(fontSize: 10, color: Colors.grey),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${data['max']?.toStringAsFixed(1) ?? '0.0'}$unit',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${data['min']?.toStringAsFixed(1) ?? '0.0'}$unit',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: textPrimary,
                       ),
-                      Container(
-                        margin: const EdgeInsets.only(top: 4),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
+                    ),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Max',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${data['max']?.toStringAsFixed(1) ?? '0.0'}$unit',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Trend',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _getTrendColor(
+                          data['trend'] ?? 'stable',
+                        ).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
                           color: _getTrendColor(
                             data['trend'] ?? 'stable',
-                          ).withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              _getTrendIcon(data['trend'] ?? 'stable'),
-                              size: 10,
-                              color: _getTrendColor(data['trend'] ?? 'stable'),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              data['trend'] ?? 'stable',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: _getTrendColor(
-                                  data['trend'] ?? 'stable',
-                                ),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
+                          ).withOpacity(0.2),
                         ),
                       ),
-                    ],
-                  ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            _getTrendIcon(data['trend'] ?? 'stable'),
+                            size: 12,
+                            color: _getTrendColor(data['trend'] ?? 'stable'),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            data['trend'] ?? 'stable',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: _getTrendColor(data['trend'] ?? 'stable'),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -1078,25 +1267,31 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     return Column(
       children: [
         Container(
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: darkGreen.withValues(alpha: 0.1),
+            color: primaryColor.withOpacity(0.1),
             shape: BoxShape.circle,
+            border: Border.all(color: primaryColor.withOpacity(0.2)),
           ),
-          child: Icon(icon, color: darkGreen, size: 20),
+          child: Icon(icon, color: primaryColor, size: 24),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         Text(
           value,
           style: TextStyle(
-            fontSize: 20,
+            fontSize: 24,
             fontWeight: FontWeight.w800,
-            color: darkGreen,
+            color: textPrimary,
           ),
         ),
+        const SizedBox(height: 4),
         Text(
           label,
-          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+          style: TextStyle(
+            fontSize: 13,
+            color: textSecondary,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ],
     );
@@ -1105,43 +1300,45 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
   Widget _systemMetric(String label, String value, IconData icon, Color color) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade100),
+        color: cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        padding: const EdgeInsets.all(16),
+        child: Row(
           children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Icon(icon, size: 14, color: color),
-                ),
-                const Spacer(),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: darkGreen,
-                  ),
-                ),
-              ],
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, size: 20, color: color),
             ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey.shade600,
-                fontWeight: FontWeight.w600,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: textPrimary,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -1150,25 +1347,40 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     );
   }
 
+  IconData _getSensorIcon(String sensorName) {
+    switch (sensorName.toLowerCase()) {
+      case 'temperature':
+        return Icons.thermostat;
+      case 'humidity':
+        return Icons.water_drop;
+      case 'ph level':
+        return Icons.science;
+      case 'light':
+        return Icons.wb_sunny;
+      default:
+        return Icons.sensors;
+    }
+  }
+
   IconData _getTrendIcon(String trend) {
     switch (trend) {
       case 'rising':
-        return Icons.trending_up;
+        return Icons.trending_up_rounded;
       case 'falling':
-        return Icons.trending_down;
+        return Icons.trending_down_rounded;
       default:
-        return Icons.trending_flat;
+        return Icons.trending_flat_rounded;
     }
   }
 
   Color _getTrendColor(String trend) {
     switch (trend) {
       case 'rising':
-        return Colors.green;
+        return successColor;
       case 'falling':
-        return Colors.red;
+        return errorColor;
       default:
-        return Colors.blue;
+        return primaryColor;
     }
   }
 
@@ -1197,9 +1409,17 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                   _loadAnalyticsData();
                 }
               },
-              selectedColor: darkGreen,
+              selectedColor: primaryColor,
               labelStyle: TextStyle(
-                color: isSelected ? Colors.white : darkGreen,
+                color: isSelected ? Colors.white : textPrimary,
+                fontWeight: FontWeight.w600,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 8,
               ),
             ),
           );
@@ -1217,53 +1437,50 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     ];
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: GridView(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 4,
-          childAspectRatio: 2.5,
-        ),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: metrics.map((metric) {
           final isSelected = selectedMetric == metric['value'];
 
-          return GestureDetector(
-            onTap: () {
-              setState(() => selectedMetric = metric['value']! as String);
-            },
-            child: Container(
-              margin: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: isSelected ? darkGreen : Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isSelected ? darkGreen : Colors.grey.shade300,
+          return Expanded(
+            child: GestureDetector(
+              onTap: () {
+                setState(() => selectedMetric = metric['value']! as String);
+              },
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: isSelected ? primaryColor : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 5,
-                    offset: const Offset(0, 1),
-                  ),
-                ],
-              ),
-              child: Center(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                child: Column(
                   children: [
                     Icon(
                       metric['icon'] as IconData,
-                      size: 16,
-                      color: isSelected ? Colors.white : darkGreen,
+                      size: 20,
+                      color: isSelected ? Colors.white : textSecondary,
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(height: 6),
                     Text(
                       metric['label']! as String,
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: isSelected ? Colors.white : darkGreen,
+                        color: isSelected ? Colors.white : textSecondary,
                       ),
                     ),
                   ],
@@ -1279,50 +1496,86 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: creamBackground,
+      backgroundColor: backgroundColor,
       appBar: AppBar(
-        title: const Text('Analytics Dashboard'),
-        backgroundColor: darkGreen,
-        foregroundColor: Colors.white,
+        title: Text(
+          'Analytics Dashboard',
+          style: TextStyle(
+            color: textPrimary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        backgroundColor: cardColor,
         elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios_rounded, color: textPrimary),
+          onPressed: () => Navigator.pop(context),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.download),
+            icon: Icon(Icons.download_rounded, color: primaryColor),
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Export functionality coming soon'),
-                  backgroundColor: Colors.orange,
+                SnackBar(
+                  content: Text(
+                    'Export functionality coming soon',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  backgroundColor: primaryColor,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               );
             },
             tooltip: 'Export',
           ),
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: Icon(Icons.refresh_rounded, color: primaryColor),
             onPressed: _loadAnalyticsData,
             tooltip: 'Refresh',
           ),
         ],
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.only(
-                // 🔹 PERUBAHAN DI SINI
-                left: 16,
-                right: 16,
-                top: 16,
-                bottom: 100, // 🔹 TAMBAHKAN PADDING BOTTOM
-              ),
+          ? Center(
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(color: primaryColor),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Loading analytics...',
+                    style: TextStyle(
+                      color: textSecondary,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Period Selector
+                  Text(
+                    'Select Period',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   _periodSelector(),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
 
                   // Metric Selector
                   _metricSelector(),
+                  const SizedBox(height: 24),
 
                   // Selected Content
                   if (selectedMetric == 'overview') _buildOverview(),
@@ -1330,27 +1583,38 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                   if (selectedMetric == 'users') _buildUserAnalytics(),
                   if (selectedMetric == 'system') _buildSystemAnalytics(),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 32),
 
                   // Summary Card
                   Container(
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          darkGreen.withValues(alpha: 0.1),
-                          mediumGreen.withValues(alpha: 0.1),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: mediumGreen.withValues(alpha: 0.2),
-                      ),
+                      color: cardColor,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: borderColor),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.03),
+                          blurRadius: 20,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
                     child: Row(
                       children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: primaryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            Icons.insights_rounded,
+                            color: primaryColor,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1360,15 +1624,15 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w700,
-                                  color: darkGreen,
+                                  color: textPrimary,
                                 ),
                               ),
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 4),
                               Text(
                                 'Last updated: ${DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now())}',
                                 style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade600,
+                                  fontSize: 14,
+                                  color: textSecondary,
                                 ),
                               ),
                             ],
@@ -1377,18 +1641,22 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 12,
-                            vertical: 8,
+                            vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: darkGreen,
+                            gradient: LinearGradient(
+                              colors: [primaryColor, secondaryColor],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Row(
                             children: [
                               Icon(
-                                Icons.insights,
+                                Icons.circle,
                                 color: Colors.white,
-                                size: 16,
+                                size: 8,
                               ),
                               const SizedBox(width: 6),
                               Text(
@@ -1396,6 +1664,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.w600,
+                                  fontSize: 14,
                                 ),
                               ),
                             ],
@@ -1404,7 +1673,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 100),
                 ],
               ),
             ),

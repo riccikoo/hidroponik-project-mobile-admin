@@ -19,14 +19,19 @@ class ChatRoomDetailPage extends StatefulWidget {
 }
 
 class _ChatRoomDetailPageState extends State<ChatRoomDetailPage> {
-  // Color theme - Green theme
-  final Color primaryGreen = const Color(0xFF2E7D32);
-  final Color lightGreen = const Color(0xFF81C784);
-  final Color accentGreen = const Color(0xFF4CAF50);
-  final Color darkGreen = const Color(0xFF1B5E20);
-  final Color backgroundGreen = const Color(0xFFE8F5E9);
-  final Color userMessageBg = const Color(0xFFF5F5F5);
-  final Color adminMessageBg = const Color(0xFF4CAF50);
+  // Modern Color Palette
+  final Color primaryColor = const Color(0xFF4361EE); // Modern blue
+  final Color secondaryColor = const Color(0xFF3A0CA3); // Dark blue
+  final Color accentColor = const Color(0xFF4CC9F0); // Light blue
+  final Color successColor = const Color(0xFF06D6A0); // Green
+  final Color errorColor = const Color(0xFFEF476F); // Red
+  final Color backgroundColor = const Color(0xFFF8F9FF); // Light background
+  final Color cardColor = Colors.white;
+  final Color textPrimary = const Color(0xFF2B2D42);
+  final Color textSecondary = const Color(0xFF8D99AE);
+  final Color borderColor = const Color(0xFFE9ECEF);
+  final Color userMessageColor = const Color(0xFFE3F2FD); // Light blue
+  final Color adminMessageColor = const Color(0xFF4361EE); // Primary blue
 
   // Controllers and state
   late TextEditingController _replyController;
@@ -54,13 +59,11 @@ class _ChatRoomDetailPageState extends State<ChatRoomDetailPage> {
     super.dispose();
   }
 
-  // Di _loadAdminData():
   Future<void> _loadAdminData() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      _adminId = prefs.getInt('adminId') ?? 0; // ✅ Ini sudah benar
+      _adminId = prefs.getInt('adminId') ?? 0;
 
-      // Tapi jika adminId null, cek juga String
       if (_adminId == 0) {
         final adminIdString = prefs.getString('adminId');
         if (adminIdString != null) {
@@ -105,7 +108,6 @@ class _ChatRoomDetailPageState extends State<ChatRoomDetailPage> {
 
         print('📨 Found ${messagesData.length} messages');
 
-        // Debug: print semua message
         for (var i = 0; i < messagesData.length; i++) {
           print('Message $i: ${messagesData[i]}');
         }
@@ -136,14 +138,14 @@ class _ChatRoomDetailPageState extends State<ChatRoomDetailPage> {
           );
         });
 
-        // Mark as read
         await _markAllAsRead();
       } else {
         print('❌ Failed to load conversation: ${result['message']}');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to load messages: ${result['message']}'),
-            backgroundColor: Colors.red,
+            backgroundColor: errorColor,
+            behavior: SnackBarBehavior.floating,
           ),
         );
         await _loadRepliesFallback();
@@ -153,7 +155,8 @@ class _ChatRoomDetailPageState extends State<ChatRoomDetailPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error loading conversation: $e'),
-          backgroundColor: Colors.red,
+          backgroundColor: errorColor,
+          behavior: SnackBarBehavior.floating,
         ),
       );
       await _loadRepliesFallback();
@@ -193,23 +196,31 @@ class _ChatRoomDetailPageState extends State<ChatRoomDetailPage> {
   Future<void> _sendReply() async {
     final replyText = _replyController.text.trim();
     if (replyText.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please enter a message')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please enter a message'),
+          backgroundColor: errorColor,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
       return;
     }
 
     if (_adminId == 0) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Admin not authenticated')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Admin not authenticated'),
+          backgroundColor: errorColor,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
       return;
     }
 
     try {
       setState(() => _isReplying = true);
 
-      // 🔥 OPTIMISTIC MESSAGE
+      // Optimistic message
       final optimisticMessage = AdminMessage(
         id: DateTime.now().millisecondsSinceEpoch,
         message: replyText,
@@ -246,9 +257,10 @@ class _ChatRoomDetailPageState extends State<ChatRoomDetailPage> {
 
       if (lastUserMessageId == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Cannot reply: no user message found'),
-            backgroundColor: Colors.red,
+            backgroundColor: errorColor,
+            behavior: SnackBarBehavior.floating,
           ),
         );
         return;
@@ -258,29 +270,35 @@ class _ChatRoomDetailPageState extends State<ChatRoomDetailPage> {
 
       final success = await ApiService.sendReply(
         token: widget.token,
-        messageId: lastUserMessageId, // ✅ FIXED
+        messageId: lastUserMessageId,
         content: replyText,
       );
 
       if (!success) {
-        // rollback optimistic UI
         setState(() {
           _allMessages.removeWhere((m) => m.id == optimisticMessage.id);
         });
 
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Failed to send reply')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to send reply'),
+            backgroundColor: errorColor,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
         return;
       }
 
-      // 🔄 refresh dari server
       await _loadFullConversation();
     } catch (e) {
       print('❌ Reply error: $e');
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: errorColor,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     } finally {
       setState(() => _isReplying = false);
     }
@@ -288,7 +306,6 @@ class _ChatRoomDetailPageState extends State<ChatRoomDetailPage> {
 
   Future<void> _markAllAsRead() async {
     try {
-      // Update local state
       setState(() {
         for (var msg in _allMessages.where((m) => !_isAdminMessage(m))) {
           msg.isRead = true;
@@ -296,7 +313,6 @@ class _ChatRoomDetailPageState extends State<ChatRoomDetailPage> {
         widget.thread.unreadCount = 0;
       });
 
-      // Mark on server if we have message IDs
       final unreadMessages = _allMessages
           .where((m) => !_isAdminMessage(m) && !m.isRead)
           .toList();
@@ -316,11 +332,11 @@ class _ChatRoomDetailPageState extends State<ChatRoomDetailPage> {
               Text('All messages marked as read'),
             ],
           ),
-          backgroundColor: primaryGreen,
+          backgroundColor: successColor,
           duration: Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(12),
           ),
         ),
       );
@@ -330,7 +346,6 @@ class _ChatRoomDetailPageState extends State<ChatRoomDetailPage> {
   }
 
   bool _isAdminMessage(AdminMessage msg) {
-    // ✅ Gunakan adminId yang sudah diload
     return msg.senderId == _adminId ||
         (msg.sender != null && msg.sender!.id == _adminId) ||
         (_adminEmail.isNotEmpty && msg.sender?.email == _adminEmail) ||
@@ -342,102 +357,110 @@ class _ChatRoomDetailPageState extends State<ChatRoomDetailPage> {
     final hasUnread = widget.thread.unreadCount > 0;
 
     return Scaffold(
-      backgroundColor: backgroundGreen,
+      backgroundColor: backgroundColor,
       appBar: AppBar(
-        title: Text(
-          widget.thread.senderName,
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
-            fontSize: 18,
-          ),
+        backgroundColor: cardColor,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios_rounded, color: textPrimary),
+          onPressed: () => Navigator.pop(context),
         ),
-        backgroundColor: primaryGreen,
-        iconTheme: IconThemeData(color: Colors.white),
-        elevation: 2,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(bottom: Radius.circular(15)),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              widget.thread.senderName,
+              style: TextStyle(
+                color: textPrimary,
+                fontWeight: FontWeight.w700,
+                fontSize: 18,
+              ),
+            ),
+            Text(
+              'Online',
+              style: TextStyle(
+                color: successColor,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
         actions: [
-          if (hasUnread)
-            Container(
-              margin: EdgeInsets.only(right: 8),
-              decoration: BoxDecoration(
-                color: Colors.red,
-                shape: BoxShape.circle,
-              ),
-              padding: EdgeInsets.all(2),
-              child: IconButton(
-                icon: Icon(Icons.mark_email_read, size: 20),
-                onPressed: _markAllAsRead,
-                tooltip: 'Mark all as read',
-                color: Colors.white,
-              ),
-            ),
           Container(
-            margin: EdgeInsets.only(right: 12),
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
+              color: primaryColor.withOpacity(0.1),
               shape: BoxShape.circle,
-              color: Colors.white.withOpacity(0.2),
             ),
             child: IconButton(
-              icon: Icon(Icons.refresh, size: 22),
+              icon: Icon(Icons.refresh_rounded, color: primaryColor),
               onPressed: _loadFullConversation,
               tooltip: 'Refresh chat',
-              color: Colors.white,
             ),
           ),
+          SizedBox(width: 8),
+          if (hasUnread)
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: errorColor.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: IconButton(
+                icon: Icon(Icons.mark_email_read, color: errorColor),
+                onPressed: _markAllAsRead,
+                tooltip: 'Mark all as read',
+              ),
+            ),
+          SizedBox(width: 16),
         ],
       ),
       body: Column(
         children: [
           // User info card
           Container(
-            margin: EdgeInsets.all(12),
+            margin: EdgeInsets.fromLTRB(16, 8, 16, 8),
             padding: EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(15),
+              color: cardColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: borderColor),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
-                  blurRadius: 10,
-                  offset: Offset(0, 4),
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 20,
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
             child: Row(
               children: [
                 Container(
-                  width: 50,
-                  height: 50,
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [lightGreen, accentGreen],
+                      colors: [primaryColor, secondaryColor],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: primaryGreen.withOpacity(0.3),
-                        blurRadius: 6,
-                        offset: Offset(0, 3),
-                      ),
-                    ],
                   ),
                   child: Center(
                     child: Text(
                       widget.thread.senderName.substring(0, 1).toUpperCase(),
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                   ),
                 ),
-                SizedBox(width: 15),
+                SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -447,361 +470,58 @@ class _ChatRoomDetailPageState extends State<ChatRoomDetailPage> {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
-                          color: darkGreen,
+                          color: textPrimary,
                         ),
                       ),
                       SizedBox(height: 4),
                       Text(
                         widget.thread.senderEmail,
                         style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
+                          fontSize: 13,
+                          color: textSecondary,
                         ),
                       ),
-                      SizedBox(height: 4),
-                      Text(
-                        'Total Messages: ${_allMessages.length}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: lightGreen,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        'Admin ID: $_adminId',
-                        style: TextStyle(fontSize: 10, color: Colors.grey),
-                      ),
-                    ],
-                  ),
-                ),
-                if (hasUnread)
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Colors.red, Colors.orange],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      '${widget.thread.unreadCount} unread',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-
-          // Loading indicator
-          if (_isLoadingMessages)
-            Container(
-              margin: EdgeInsets.symmetric(vertical: 20),
-              child: Column(
-                children: [
-                  CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(primaryGreen),
-                    strokeWidth: 3,
-                  ),
-                  SizedBox(height: 12),
-                  Text(
-                    'Loading conversation...',
-                    style: TextStyle(
-                      color: darkGreen.withOpacity(0.7),
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-          // Chat messages
-          Expanded(
-            child: _allMessages.isEmpty && !_isLoadingMessages
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 100,
-                          height: 100,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
-                                blurRadius: 10,
-                                spreadRadius: 2,
-                              ),
-                            ],
-                          ),
-                          child: Icon(
-                            Icons.forum_outlined,
-                            size: 50,
-                            color: lightGreen,
-                          ),
-                        ),
-                        SizedBox(height: 20),
-                        Text(
-                          'Start a conversation',
-                          style: TextStyle(
-                            color: darkGreen,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Send your first message to ${widget.thread.senderName}',
-                          style: TextStyle(
-                            color: Colors.grey.shade600,
-                            fontSize: 14,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    reverse: true,
-                    padding: EdgeInsets.all(12),
-                    itemCount: _allMessages.length,
-                    itemBuilder: (context, index) {
-                      final msg = _allMessages[_allMessages.length - 1 - index];
-                      return _buildChatBubble(msg);
-                    },
-                  ),
-          ),
-
-          // Reply input section
-          Container(
-            padding: EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border(top: BorderSide(color: Colors.grey.shade200)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: Offset(0, -2),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade50,
-                      borderRadius: BorderRadius.circular(25),
-                      border: Border.all(color: Colors.grey.shade300),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.02),
-                          blurRadius: 4,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        SizedBox(width: 16),
-                        Expanded(
-                          child: TextField(
-                            controller: _replyController,
-                            decoration: InputDecoration(
-                              hintText: 'Type your reply...',
-                              hintStyle: TextStyle(
-                                color: Colors.grey.shade500,
-                                fontSize: 14,
-                              ),
-                              border: InputBorder.none,
-                            ),
-                            maxLines: 3,
-                            minLines: 1,
-                            style: TextStyle(fontSize: 14, color: darkGreen),
-                            onSubmitted: (_) {
-                              if (!_isReplying) _sendReply();
-                            },
-                          ),
-                        ),
-                        IconButton(
-                          icon: Icon(Icons.attach_file, color: lightGreen),
-                          onPressed: () {
-                            // TODO: Implement file attachment
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                SizedBox(width: 10),
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [primaryGreen, accentGreen],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: primaryGreen.withOpacity(0.4),
-                        blurRadius: 8,
-                        offset: Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: _isReplying
-                      ? Center(
-                          child: SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          ),
-                        )
-                      : IconButton(
-                          icon: Icon(Icons.send, color: Colors.white, size: 22),
-                          onPressed: _sendReply,
-                          tooltip: 'Send as Admin (ID: $_adminId)',
-                        ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildChatBubble(AdminMessage msg) {
-    // Gunakan fungsi _isAdminMessage yang sudah diperbaiki
-    final isAdmin = _isAdminMessage(msg);
-
-    print(
-      '💬 Building bubble - Message: "${msg.message}", SenderId: ${msg.senderId}, IsAdmin: $isAdmin, AdminId: $_adminId',
-    );
-
-    return Container(
-      margin: EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: isAdmin
-            ? MainAxisAlignment.end
-            : MainAxisAlignment.start,
-        children: [
-          if (!isAdmin)
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: Colors.blue.shade100,
-              child: Text(
-                widget.thread.senderName.substring(0, 1).toUpperCase(),
-                style: TextStyle(
-                  color: Colors.blue.shade800,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-
-          SizedBox(width: 8),
-
-          Flexible(
-            child: Column(
-              crossAxisAlignment: isAdmin
-                  ? CrossAxisAlignment.end
-                  : CrossAxisAlignment.start,
-              children: [
-                if (!isAdmin)
-                  Padding(
-                    padding: EdgeInsets.only(bottom: 4),
-                    child: Text(
-                      widget.thread.senderName,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey.shade700,
-                      ),
-                    ),
-                  ),
-
-                Container(
-                  constraints: BoxConstraints(
-                    maxWidth: MediaQuery.of(context).size.width * 0.7,
-                  ),
-                  padding: EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: isAdmin ? adminMessageBg : userMessageBg,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 4,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Sender name for admin messages
-                      if (isAdmin && msg.sender != null)
-                        Padding(
-                          padding: EdgeInsets.only(bottom: 4),
-                          child: Text(
-                            msg.sender?.name ?? 'Admin',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white.withOpacity(0.9),
-                            ),
-                          ),
-                        ),
-
-                      Text(
-                        msg.message ?? '[No message]',
-                        style: TextStyle(
-                          color: isAdmin ? Colors.white : Colors.black87,
-                          fontSize: 14,
-                          height: 1.4,
-                        ),
-                      ),
-                      SizedBox(height: 4),
+                      SizedBox(height: 8),
                       Row(
-                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(
-                            _formatTime(msg.timestamp ?? DateTime.now()),
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: isAdmin
-                                  ? Colors.white.withOpacity(0.8)
-                                  : Colors.grey.shade600,
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: primaryColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              'Messages: ${_allMessages.length}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: primaryColor,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                           SizedBox(width: 8),
-                          if (isAdmin)
-                            Icon(
-                              Icons.done_all,
-                              size: 12,
-                              color: Colors.white.withOpacity(0.8),
+                          if (hasUnread)
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: errorColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                '${widget.thread.unreadCount} unread',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: errorColor,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ),
-                          if (!isAdmin && msg.isRead)
-                            Icon(Icons.done_all, size: 12, color: Colors.blue),
-                          if (!isAdmin && !msg.isRead)
-                            Icon(Icons.done, size: 12, color: Colors.grey),
                         ],
                       ),
                     ],
@@ -811,16 +531,358 @@ class _ChatRoomDetailPageState extends State<ChatRoomDetailPage> {
             ),
           ),
 
-          SizedBox(width: 8),
+          // Loading indicator
+          if (_isLoadingMessages)
+            Expanded(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      color: primaryColor,
+                      strokeWidth: 2,
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      'Loading conversation...',
+                      style: TextStyle(
+                        color: textSecondary,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
 
+          // Chat messages
+          if (!_isLoadingMessages)
+            Expanded(
+              child: _allMessages.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 120,
+                            height: 120,
+                            decoration: BoxDecoration(
+                              color: cardColor,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              Icons.forum_outlined,
+                              size: 48,
+                              color: primaryColor,
+                            ),
+                          ),
+                          SizedBox(height: 24),
+                          Text(
+                            'Start a conversation',
+                            style: TextStyle(
+                              color: textPrimary,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Send your first message to ${widget.thread.senderName}',
+                            style: TextStyle(
+                              color: textSecondary,
+                              fontSize: 14,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      reverse: true,
+                      padding: EdgeInsets.all(16),
+                      itemCount: _allMessages.length,
+                      itemBuilder: (context, index) {
+                        final msg = _allMessages[_allMessages.length - 1 - index];
+                        return _buildChatBubble(msg);
+                      },
+                    ),
+            ),
+
+          // Reply input section
+          Container(
+            padding: EdgeInsets.fromLTRB(16, 12, 16, 16),
+            decoration: BoxDecoration(
+              color: cardColor,
+              border: Border(top: BorderSide(color: borderColor)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 20,
+                  offset: const Offset(0, -2),
+                ),
+              ],
+            ),
+            child: SafeArea(
+              top: false,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: backgroundColor,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: borderColor),
+                      ),
+                      child: Row(
+                        children: [
+                          SizedBox(width: 16),
+                          Expanded(
+                            child: TextField(
+                              controller: _replyController,
+                              decoration: InputDecoration(
+                                hintText: 'Type your reply...',
+                                hintStyle: TextStyle(
+                                  color: textSecondary,
+                                  fontSize: 14,
+                                ),
+                                border: InputBorder.none,
+                              ),
+                              maxLines: 3,
+                              minLines: 1,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: textPrimary,
+                              ),
+                              onSubmitted: (_) {
+                                if (!_isReplying) _sendReply();
+                              },
+                            ),
+                          ),
+                          IconButton(
+                            icon: Icon(
+                              Icons.attach_file_rounded,
+                              color: primaryColor,
+                            ),
+                            onPressed: () {
+                              // TODO: Implement file attachment
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [primaryColor, secondaryColor],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: primaryColor.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: _isReplying
+                        ? Center(
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            ),
+                          )
+                        : IconButton(
+                            icon: Icon(Icons.send_rounded, color: Colors.white),
+                            onPressed: _sendReply,
+                            tooltip: 'Send message',
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChatBubble(AdminMessage msg) {
+    final isAdmin = _isAdminMessage(msg);
+
+    return Container(
+      margin: EdgeInsets.only(bottom: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: isAdmin
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
+        children: [
+          if (!isAdmin)
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [accentColor, primaryColor],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  widget.thread.senderName.substring(0, 1).toUpperCase(),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          SizedBox(width: 8),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: isAdmin
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
+              children: [
+                if (!isAdmin)
+                  Padding(
+                    padding: EdgeInsets.only(bottom: 4, left: 8),
+                    child: Text(
+                      widget.thread.senderName,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: textSecondary,
+                      ),
+                    ),
+                  ),
+                Container(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width * 0.75,
+                  ),
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isAdmin ? adminMessageColor : userMessageColor,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
+                      bottomLeft: isAdmin ? Radius.circular(20) : Radius.circular(4),
+                      bottomRight: isAdmin ? Radius.circular(4) : Radius.circular(20),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 8,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (isAdmin && msg.sender != null)
+                        Padding(
+                          padding: EdgeInsets.only(bottom: 8),
+                          child: Text(
+                            msg.sender?.name ?? 'Admin',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white.withOpacity(0.9),
+                            ),
+                          ),
+                        ),
+                      Text(
+                        msg.message ?? '[No message]',
+                        style: TextStyle(
+                          color: isAdmin ? Colors.white : textPrimary,
+                          fontSize: 14,
+                          height: 1.4,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _formatTime(msg.timestamp ?? DateTime.now()),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isAdmin
+                                  ? Colors.white.withOpacity(0.8)
+                                  : textSecondary,
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          if (isAdmin)
+                            Icon(
+                              Icons.done_all_rounded,
+                              size: 14,
+                              color: Colors.white.withOpacity(0.8),
+                            ),
+                          if (!isAdmin && msg.isRead)
+                            Icon(
+                              Icons.done_all_rounded,
+                              size: 14,
+                              color: primaryColor,
+                            ),
+                          if (!isAdmin && !msg.isRead)
+                            Icon(
+                              Icons.done_rounded,
+                              size: 14,
+                              color: textSecondary,
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: 8),
           if (isAdmin)
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: Colors.white,
-              child: Icon(
-                Icons.admin_panel_settings,
-                size: 16,
-                color: darkGreen,
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: cardColor,
+                shape: BoxShape.circle,
+                border: Border.all(color: borderColor),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Center(
+                child: Icon(
+                  Icons.admin_panel_settings_rounded,
+                  size: 16,
+                  color: primaryColor,
+                ),
               ),
             ),
         ],
